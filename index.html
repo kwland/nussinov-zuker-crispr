@@ -16,20 +16,28 @@
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="#tool" aria-label="RNA Folding for CRISPR home">
+      <a class="brand" href="#tool" aria-label="RNA Folding for CRISPR home" data-tab-link="tool">
         <span class="brand-mark" aria-hidden="true">AU</span>
         <span>RNA Folding for CRISPR</span>
       </a>
-      <nav class="topnav" aria-label="Project sections">
-        <a href="#tool">Tool</a>
-        <a href="#model">Model</a>
-        <a href="#data">Data</a>
-        <a href="#presentation">Presentation</a>
+      <nav class="topnav" aria-label="Project sections" role="tablist">
+        <button class="tab-button is-active" type="button" role="tab" aria-selected="true" data-tab="tool">
+          Fold Lab
+        </button>
+        <button class="tab-button" type="button" role="tab" aria-selected="false" data-tab="data">
+          Guide Data
+        </button>
+        <button class="tab-button" type="button" role="tab" aria-selected="false" data-tab="model">
+          Model
+        </button>
+        <button class="tab-button" type="button" role="tab" aria-selected="false" data-tab="presentation">
+          Present
+        </button>
       </nav>
     </header>
 
     <main>
-      <section class="workbench" id="tool">
+      <section class="workbench tab-panel is-active" id="tool" data-tab-panel="tool" role="tabpanel">
         <div class="workbench-copy">
           <p class="eyebrow">Computational biology final project</p>
           <h1>Fold an RNA guide, then inspect whether its CRISPR seed stays open.</h1>
@@ -38,10 +46,22 @@
             the predicted fold into guide RNA features: total self-pairing, dot-bracket structure,
             GC content, and PAM-proximal seed accessibility.
           </p>
+          <div class="hero-actions" aria-label="Quick project facts">
+            <span>Static GitHub Pages site</span>
+            <span>Client-side algorithm</span>
+            <span>CRISPR guide demo</span>
+          </div>
         </div>
 
         <div class="tool-layout" aria-label="Interactive Nussinov folding lab">
           <form class="input-panel" id="foldForm">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Input</p>
+                <h2>Sequence</h2>
+              </div>
+              <span class="status-pill" id="inputStatus">ready</span>
+            </div>
             <label for="sequenceInput">RNA or DNA sequence</label>
             <textarea id="sequenceInput" spellcheck="false">GGGAAACCC</textarea>
 
@@ -68,11 +88,22 @@
               >
                 Bad guide
               </button>
+              <button class="secondary-action" type="button" data-example="CTTAAGGGTTAAGTAAGTGT">
+                Random guide
+              </button>
+              <button class="ghost-action" type="button" id="clearSequence">Clear</button>
             </div>
             <p class="error-text" id="errorText" role="alert"></p>
           </form>
 
           <div class="visual-panel">
+            <div class="panel-heading compact">
+              <div>
+                <p class="eyebrow">Output</p>
+                <h2>Predicted fold</h2>
+              </div>
+              <button class="ghost-action" type="button" id="copyStructure">Copy structure</button>
+            </div>
             <div class="metric-grid" aria-label="Fold metrics">
               <div>
                 <span class="metric-label">Base pairs</span>
@@ -94,13 +125,15 @@
 
             <canvas id="rnaCanvas" width="900" height="360" aria-label="RNA base-pair arc diagram"></canvas>
             <div class="dot-output">
-              <span id="normalizedSequence"></span>
-              <code id="dotBracket"></code>
+              <span>Sequence: <strong id="normalizedSequence"></strong></span>
+              <span>Structure: <code id="dotBracket"></code></span>
             </div>
+            <p class="interpretation" id="foldInterpretation"></p>
           </div>
 
           <div class="matrix-panel">
             <div>
+              <p class="eyebrow">DP matrix</p>
               <h2>Nussinov score matrix</h2>
               <p>
                 Darker cells mark subsequences where the algorithm can form more non-crossing base
@@ -108,11 +141,31 @@
               </p>
             </div>
             <canvas id="matrixCanvas" width="480" height="480" aria-label="Nussinov dynamic-programming heatmap"></canvas>
+            <div class="matrix-legend">
+              <span>low score</span>
+              <span class="legend-ramp" aria-hidden="true"></span>
+              <span>high score</span>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="section-band" id="model">
+      <section class="section-band contrast tab-panel" id="data" data-tab-panel="data" role="tabpanel" hidden>
+        <div class="section-header">
+          <p class="eyebrow">Part 2: Algorithm application</p>
+          <h2>Guide RNA comparison set</h2>
+          <p>
+            The checkpoint plan uses a compact public-data scaffold: two known guide slots, two
+            random 20 nt controls, and two bad controls. Select a card to load that guide into the
+            Fold Lab and see the structure update.
+          </p>
+        </div>
+
+        <div class="summary-panel" id="guideSummary" aria-label="Guide comparison summary"></div>
+        <div class="data-grid" id="guideCards" aria-label="CRISPR guide comparison cards"></div>
+      </section>
+
+      <section class="section-band tab-panel" id="model" data-tab-panel="model" role="tabpanel" hidden>
         <div class="section-header">
           <p class="eyebrow">Part 1: Topic review</p>
           <h2>Why RNA folding matters</h2>
@@ -160,23 +213,32 @@
             <code>max(N[i,k] + N[k+1,j])</code>
           </div>
         </div>
-      </section>
-
-      <section class="section-band contrast" id="data">
-        <div class="section-header">
-          <p class="eyebrow">Part 2: Algorithm application</p>
-          <h2>Guide RNA comparison set</h2>
-          <p>
-            The checkpoint plan uses a compact public-data scaffold: two known guide slots, two
-            random 20 nt controls, and two bad controls. Replace the placeholders with exact public
-            guide sequences before the final presentation.
-          </p>
+        <div class="compare-panel">
+          <article>
+            <h3>Nussinov</h3>
+            <p>
+              Counts allowed base pairs and chooses a non-crossing structure with the highest
+              score. It is transparent and easy to implement.
+            </p>
+          </article>
+          <article>
+            <h3>Zuker / ViennaRNA</h3>
+            <p>
+              Minimizes free energy using experimental thermodynamic parameters for stacking,
+              hairpins, bulges, internal loops, and multiloops.
+            </p>
+          </article>
+          <article>
+            <h3>Project use</h3>
+            <p>
+              Nussinov gives the class-built baseline. ViennaRNA is the comparison tool for a more
+              physically realistic fold.
+            </p>
+          </article>
         </div>
-
-        <div class="data-grid" id="guideCards" aria-label="CRISPR guide comparison cards"></div>
       </section>
 
-      <section class="section-band" id="presentation">
+      <section class="section-band tab-panel" id="presentation" data-tab-panel="presentation" role="tabpanel" hidden>
         <div class="section-header">
           <p class="eyebrow">Final website and presentation</p>
           <h2>What this site demonstrates</h2>
@@ -188,7 +250,7 @@
           </article>
           <article>
             <h3>Build</h3>
-            <p>Draft code exists in <a href="../nussinov.py">nussinov.py</a>, <a href="../crispr_nussinov_analysis.py">crispr_nussinov_analysis.py</a>, and this static JavaScript demo.</p>
+            <p>Draft code exists in the project files <strong>nussinov.py</strong>, <strong>crispr_nussinov_analysis.py</strong>, and this static JavaScript demo.</p>
           </article>
           <article>
             <h3>Apply</h3>

@@ -127,6 +127,49 @@ function scoreGuide(sequence) {
   };
 }
 
+function switchTab(tabName, updateHash = true) {
+  if (!document.querySelector(`[data-tab-panel="${tabName}"]`)) {
+    tabName = "tool";
+  }
+
+  document.querySelectorAll("[data-tab]").forEach((button) => {
+    const active = button.dataset.tab === tabName;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", String(active));
+  });
+
+  document.querySelectorAll("[data-tab-panel]").forEach((panel) => {
+    const active = panel.dataset.tabPanel === tabName;
+    panel.classList.toggle("is-active", active);
+    panel.hidden = !active;
+  });
+
+  if (updateHash) {
+    history.replaceState(null, "", `#${tabName}`);
+  }
+
+  if (tabName === "tool") {
+    requestAnimationFrame(runFold);
+  }
+}
+
+function foldInterpretation(score) {
+  if (!score.sequence.length) return "Enter an RNA or DNA sequence to start folding.";
+  const pieces = [
+    `${score.score} predicted base pairs`,
+    `${score.gc.toFixed(1)}% GC`,
+  ];
+  if (score.sequence.length >= seedLength) {
+    pieces.push(`${Math.round(score.seedAccessibility * 100)}% of seed bases open`);
+  }
+  if (score.warnings.length) {
+    pieces.push(`warnings: ${score.warnings.join(", ")}`);
+  } else {
+    pieces.push("no simple guide-design warnings");
+  }
+  return pieces.join(" · ");
+}
+
 function drawRNA(canvas, fold) {
   const ctx = canvas.getContext("2d");
   const ratio = window.devicePixelRatio || 1;
@@ -229,15 +272,17 @@ function drawMatrix(canvas, fold) {
 }
 
 function renderFold(fold) {
-  document.querySelector("#pairCount").textContent = String(fold.score);
-  document.querySelector("#gcPercent").textContent = `${gcPercent(fold.sequence).toFixed(1)}%`;
-  document.querySelector("#seqLength").textContent = `${fold.sequence.length} nt`;
-
   const scored = scoreGuide(fold.sequence);
+  document.querySelector("#pairCount").textContent = String(scored.score);
+  document.querySelector("#gcPercent").textContent = `${scored.gc.toFixed(1)}%`;
+  document.querySelector("#seqLength").textContent = `${fold.sequence.length} nt`;
   document.querySelector("#seedOpen").textContent =
     fold.sequence.length >= seedLength ? `${Math.round(scored.seedAccessibility * 100)}%` : "n/a";
   document.querySelector("#normalizedSequence").textContent = fold.sequence;
   document.querySelector("#dotBracket").textContent = fold.structure;
+  document.querySelector("#foldInterpretation").textContent = foldInterpretation(scored);
+  document.querySelector("#inputStatus").textContent =
+    scored.warnings.length ? `${scored.warnings.length} warning${scored.warnings.length > 1 ? "s" : ""}` : "ready";
   drawRNA(document.querySelector("#rnaCanvas"), fold);
   drawMatrix(document.querySelector("#matrixCanvas"), fold);
 }
@@ -254,6 +299,7 @@ function runFold() {
     renderFold(fold);
   } catch (err) {
     error.textContent = err.message;
+    document.querySelector("#inputStatus").textContent = "check input";
   }
 }
 
@@ -304,8 +350,50 @@ function guideCard(item) {
       </div>
       <p><strong>Fold:</strong> <span class="sequence-text">${score.structure}</span></p>
       <p class="${warnings === "none" ? "" : "warning-text"}"><strong>Warnings:</strong> ${warnings}</p>
+      <button class="secondary-action load-guide" type="button" data-load-guide="${item.spacer}">
+        Load guide in Fold Lab
+      </button>
     </article>
   `;
+}
+
+function renderGuideSummary(data) {
+  const ready = data.filter((item) => !item.spacer.includes("REPLACE_WITH"));
+  const scored = ready.map((item) => scoreGuide(item.spacer));
+  const averageSeed = scored.length
+    ? scored.reduce((sum, item) => sum + item.seedAccessibility, 0) / scored.length
+    : 0;
+  const averagePairs = scored.length
+    ? scored.reduce((sum, item) => sum + item.score, 0) / scored.length
+    : 0;
+  const warnings = scored.reduce((sum, item) => sum + item.warnings.length, 0);
+  document.querySelector("#guideSummary").innerHTML = `
+    <div class="summary-stat">
+      <span>Ready sequences</span>
+      <strong>${ready.length}/${data.length}</strong>
+    </div>
+    <div class="summary-stat">
+      <span>Average seed open</span>
+      <strong>${Math.round(averageSeed * 100)}%</strong>
+    </div>
+    <div class="summary-stat">
+      <span>Average base pairs</span>
+      <strong>${averagePairs.toFixed(1)}</strong>
+    </div>
+    <div class="summary-stat">
+      <span>Design warnings</span>
+      <strong>${warnings}</strong>
+    </div>
+  `;
+}
+
+function attachGuideLoaders() {
+  document.querySelectorAll("[data-load-guide]").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelector("#sequenceInput").value = button.dataset.loadGuide;
+      switchTab("tool");
+    });
+  });
 }
 
 async function loadGuides() {
@@ -314,17 +402,18 @@ async function loadGuides() {
     const response = await fetch("data/guide_examples.json");
     const data = await response.json();
     container.innerHTML = data.map(guideCard).join("");
+    renderGuideSummary(data);
+    attachGuideLoaders();
   } catch {
-    container.innerHTML = examples
-      .map((example) =>
-        guideCard({
+    const fallback = examples.map((example) => ({
           name: example.label,
           group: "demo",
           spacer: example.sequence,
           notes: "Loaded from the built-in demo sequence.",
-        }),
-      )
-      .join("");
+        }));
+    container.innerHTML = fallback.map(guideCard).join("");
+    renderGuideSummary(fallback);
+    attachGuideLoaders();
   }
 }
 
@@ -340,6 +429,23 @@ document.querySelector("#loopLength").addEventListener("input", (event) => {
 
 document.querySelector("#allowWobble").addEventListener("change", runFold);
 
+document.querySelector("#clearSequence").addEventListener("click", () => {
+  document.querySelector("#sequenceInput").value = "";
+  runFold();
+});
+
+document.querySelector("#copyStructure").addEventListener("click", async () => {
+  const sequence = document.querySelector("#normalizedSequence").textContent;
+  const structure = document.querySelector("#dotBracket").textContent;
+  const text = `${sequence}\n${structure}`;
+  try {
+    await navigator.clipboard.writeText(text);
+    document.querySelector("#foldInterpretation").textContent = "Copied sequence and dot-bracket structure.";
+  } catch {
+    document.querySelector("#foldInterpretation").textContent = text;
+  }
+});
+
 document.querySelectorAll("[data-example]").forEach((button) => {
   button.addEventListener("click", () => {
     document.querySelector("#sequenceInput").value = button.dataset.example;
@@ -347,7 +453,20 @@ document.querySelectorAll("[data-example]").forEach((button) => {
   });
 });
 
+document.querySelectorAll("[data-tab]").forEach((button) => {
+  button.addEventListener("click", () => switchTab(button.dataset.tab));
+});
+
+document.querySelectorAll("[data-tab-link]").forEach((link) => {
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
+    switchTab(link.dataset.tabLink);
+  });
+});
+
 window.addEventListener("resize", () => runFold());
+window.addEventListener("hashchange", () => switchTab(location.hash.replace("#", "") || "tool", false));
 
 loadGuides();
+switchTab(location.hash.replace("#", "") || "tool", false);
 runFold();
