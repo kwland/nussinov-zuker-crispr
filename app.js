@@ -191,7 +191,7 @@ function drawRNA(canvas, fold) {
   }));
 
   ctx.lineWidth = 2;
-  ctx.strokeStyle = "#cf5b4d";
+  ctx.strokeStyle = "#f07b66";
   for (const [i, j] of fold.pairs) {
     const left = positions[i];
     const right = positions[j];
@@ -203,7 +203,7 @@ function drawRNA(canvas, fold) {
     ctx.stroke();
   }
 
-  ctx.strokeStyle = "#839188";
+  ctx.strokeStyle = "#6f8178";
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   positions.forEach((pos, i) => {
@@ -216,17 +216,17 @@ function drawRNA(canvas, fold) {
   positions.forEach((pos, i) => {
     const isSeed = i >= seedStart;
     ctx.beginPath();
-    ctx.fillStyle = isSeed ? "#b78222" : "#197c80";
+    ctx.fillStyle = isSeed ? "#e4b552" : "#48c9b7";
     ctx.arc(pos.x, pos.y, 12, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = "#06100d";
     ctx.font = "700 11px Inter, system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(fold.sequence[i], pos.x, pos.y + 0.5);
   });
 
-  ctx.fillStyle = "#5d6861";
+  ctx.fillStyle = "#b3c4bb";
   ctx.font = "12px Inter, system-ui, sans-serif";
   ctx.textAlign = "left";
   ctx.fillText("Seed bases are gold", padding, 24);
@@ -250,15 +250,15 @@ function drawMatrix(canvas, fold) {
     for (let j = 0; j < n; j += 1) {
       const value = j >= i ? fold.dp[i][j] : 0;
       const intensity = value / maxScore;
-      const r = Math.round(239 - intensity * 40);
-      const g = Math.round(247 - intensity * 118);
-      const b = Math.round(242 - intensity * 120);
-      ctx.fillStyle = j >= i ? `rgb(${r}, ${g}, ${b})` : "#f2f1ec";
+      const r = Math.round(11 + intensity * 61);
+      const g = Math.round(31 + intensity * 170);
+      const b = Math.round(27 + intensity * 156);
+      ctx.fillStyle = j >= i ? `rgb(${r}, ${g}, ${b})` : "#09120f";
       ctx.fillRect(j * cell, i * cell, Math.ceil(cell), Math.ceil(cell));
     }
   }
 
-  ctx.strokeStyle = "rgba(24, 32, 29, 0.22)";
+  ctx.strokeStyle = "rgba(196, 216, 202, 0.16)";
   ctx.lineWidth = 1;
   for (let i = 0; i <= n; i += 1) {
     const p = i * cell;
