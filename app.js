@@ -396,6 +396,26 @@ function attachGuideLoaders() {
   });
 }
 
+function initializeOrganicReveal() {
+  const targets = document.querySelectorAll(
+    ".input-panel, .visual-panel, .matrix-panel, .guide-card, .three-column article, .timeline article, .compare-panel article, .summary-stat",
+  );
+  targets.forEach((element) => element.classList.add("organic-reveal"));
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+        }
+      });
+    },
+    { threshold: 0.16 },
+  );
+
+  targets.forEach((element) => observer.observe(element));
+}
+
 async function loadGuides() {
   const container = document.querySelector("#guideCards");
   try {
@@ -404,6 +424,7 @@ async function loadGuides() {
     container.innerHTML = data.map(guideCard).join("");
     renderGuideSummary(data);
     attachGuideLoaders();
+    initializeOrganicReveal();
   } catch {
     const fallback = examples.map((example) => ({
           name: example.label,
@@ -414,6 +435,7 @@ async function loadGuides() {
     container.innerHTML = fallback.map(guideCard).join("");
     renderGuideSummary(fallback);
     attachGuideLoaders();
+    initializeOrganicReveal();
   }
 }
 
@@ -468,5 +490,6 @@ window.addEventListener("resize", () => runFold());
 window.addEventListener("hashchange", () => switchTab(location.hash.replace("#", "") || "tool", false));
 
 loadGuides();
+initializeOrganicReveal();
 switchTab(location.hash.replace("#", "") || "tool", false);
 runFold();
