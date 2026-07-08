@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RNA Folding for CRISPR</title>
+    <meta
+      name="description"
+      content="Interactive Nussinov RNA folding demo and CRISPR guide RNA analysis project."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23197c80'/%3E%3Ctext x='32' y='38' text-anchor='middle' font-family='Arial' font-size='20' font-weight='700' fill='white'%3EAU%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#tool" aria-label="RNA Folding for CRISPR home">
+        <span class="brand-mark" aria-hidden="true">AU</span>
+        <span>RNA Folding for CRISPR</span>
+      </a>
+      <nav class="topnav" aria-label="Project sections">
+        <a href="#tool">Tool</a>
+        <a href="#model">Model</a>
+        <a href="#data">Data</a>
+        <a href="#presentation">Presentation</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="workbench" id="tool">
+        <div class="workbench-copy">
+          <p class="eyebrow">Computational biology final project</p>
+          <h1>Fold an RNA guide, then inspect whether its CRISPR seed stays open.</h1>
+          <p class="lead">
+            This browser version implements the Nussinov dynamic-programming algorithm and turns
+            the predicted fold into guide RNA features: total self-pairing, dot-bracket structure,
+            GC content, and PAM-proximal seed accessibility.
+          </p>
+        </div>
+
+        <div class="tool-layout" aria-label="Interactive Nussinov folding lab">
+          <form class="input-panel" id="foldForm">
+            <label for="sequenceInput">RNA or DNA sequence</label>
+            <textarea id="sequenceInput" spellcheck="false">GGGAAACCC</textarea>
+
+            <div class="control-row">
+              <label for="loopLength">Minimum loop length</label>
+              <input id="loopLength" type="range" min="0" max="6" step="1" value="3" />
+              <output id="loopLengthValue" for="loopLength">3</output>
+            </div>
+
+            <label class="toggle-row">
+              <input id="allowWobble" type="checkbox" checked />
+              <span>Allow G-U wobble pairs</span>
+            </label>
+
+            <div class="button-row">
+              <button class="primary-action" type="submit">Fold sequence</button>
+              <button class="secondary-action" type="button" data-example="GGGAAACCC">
+                Hairpin
+              </button>
+              <button
+                class="secondary-action"
+                type="button"
+                data-example="GCGCGATACGCGTATCGCGC"
+              >
+                Bad guide
+              </button>
+            </div>
+            <p class="error-text" id="errorText" role="alert"></p>
+          </form>
+
+          <div class="visual-panel">
+            <div class="metric-grid" aria-label="Fold metrics">
+              <div>
+                <span class="metric-label">Base pairs</span>
+                <strong id="pairCount">0</strong>
+              </div>
+              <div>
+                <span class="metric-label">GC</span>
+                <strong id="gcPercent">0%</strong>
+              </div>
+              <div>
+                <span class="metric-label">Seed open</span>
+                <strong id="seedOpen">n/a</strong>
+              </div>
+              <div>
+                <span class="metric-label">Length</span>
+                <strong id="seqLength">0 nt</strong>
+              </div>
+            </div>
+
+            <canvas id="rnaCanvas" width="900" height="360" aria-label="RNA base-pair arc diagram"></canvas>
+            <div class="dot-output">
+              <span id="normalizedSequence"></span>
+              <code id="dotBracket"></code>
+            </div>
+          </div>
+
+          <div class="matrix-panel">
+            <div>
+              <h2>Nussinov score matrix</h2>
+              <p>
+                Darker cells mark subsequences where the algorithm can form more non-crossing base
+                pairs.
+              </p>
+            </div>
+            <canvas id="matrixCanvas" width="480" height="480" aria-label="Nussinov dynamic-programming heatmap"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-band" id="model">
+        <div class="section-header">
+          <p class="eyebrow">Part 1: Topic review</p>
+          <h2>Why RNA folding matters</h2>
+        </div>
+        <div class="three-column">
+          <article>
+            <h3>Biology</h3>
+            <p>
+              RNA is single-stranded, so it can bend back and pair with itself. Stems, loops, and
+              bulges affect how an RNA molecule behaves, including whether a CRISPR guide can bind
+              its DNA target cleanly.
+            </p>
+          </article>
+          <article>
+            <h3>Computation</h3>
+            <p>
+              Nussinov folding uses dynamic programming. It solves small subsequences first, stores
+              their best scores, and combines them to find one high-scoring non-crossing structure.
+            </p>
+          </article>
+          <article>
+            <h3>CRISPR</h3>
+            <p>
+              For SpCas9, the guide spacer is usually 20 nt. The PAM-proximal seed is especially
+              important, so the project tracks whether the last 8 bases are predicted to be paired
+              or accessible.
+            </p>
+          </article>
+        </div>
+
+        <div class="model-strip">
+          <div>
+            <h3>Three build steps</h3>
+            <ol class="number-list">
+              <li>Implement Nussinov folding and traceback in Python and JavaScript.</li>
+              <li>Convert folds into CRISPR features such as seed accessibility and GC content.</li>
+              <li>Compare known guides, random controls, and bad controls with the same pipeline.</li>
+            </ol>
+          </div>
+          <div class="recurrence-box" aria-label="Nussinov recurrence">
+            <span>N[i,j] = max</span>
+            <code>N[i+1,j]</code>
+            <code>N[i,j-1]</code>
+            <code>N[i+1,j-1] + pair(i,j)</code>
+            <code>max(N[i,k] + N[k+1,j])</code>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-band contrast" id="data">
+        <div class="section-header">
+          <p class="eyebrow">Part 2: Algorithm application</p>
+          <h2>Guide RNA comparison set</h2>
+          <p>
+            The checkpoint plan uses a compact public-data scaffold: two known guide slots, two
+            random 20 nt controls, and two bad controls. Replace the placeholders with exact public
+            guide sequences before the final presentation.
+          </p>
+        </div>
+
+        <div class="data-grid" id="guideCards" aria-label="CRISPR guide comparison cards"></div>
+      </section>
+
+      <section class="section-band" id="presentation">
+        <div class="section-header">
+          <p class="eyebrow">Final website and presentation</p>
+          <h2>What this site demonstrates</h2>
+        </div>
+        <div class="timeline">
+          <article>
+            <h3>Research</h3>
+            <p>History and significance: Nussinov as a base-pair-count model, Zuker/ViennaRNA as energy-based folding, and CRISPR as the application.</p>
+          </article>
+          <article>
+            <h3>Build</h3>
+            <p>Draft code exists in <a href="../nussinov.py">nussinov.py</a>, <a href="../crispr_nussinov_analysis.py">crispr_nussinov_analysis.py</a>, and this static JavaScript demo.</p>
+          </article>
+          <article>
+            <h3>Apply</h3>
+            <p>Current examples include controls. The next data step is adding exact guide spacers from Doench 2016, WU-CRISPR, CRISPRscan, or class data.</p>
+          </article>
+          <article>
+            <h3>Communicate</h3>
+            <p>The demo makes the algorithm visible: sequence in, DP matrix, structure, and CRISPR seed-accessibility features out.</p>
+          </article>
+        </div>
+
+        <div class="source-row" aria-label="References">
+          <a href="https://www.pnas.org/doi/10.1073/pnas.77.11.6309">Nussinov & Jacobson</a>
+          <a href="https://academic.oup.com/nar/article-lookup/doi/10.1093/nar/9.1.133">Zuker & Stiegler</a>
+          <a href="https://www.tbi.univie.ac.at/RNA/">ViennaRNA</a>
+          <a href="https://www.nature.com/articles/nbt.3437">Doench et al. 2016</a>
+          <a href="https://genomebiology.biomedcentral.com/articles/10.1186/s13059-015-0784-0">WU-CRISPR</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Thomas Yu, Linus Tan, Henry Zhang, Brady Lambert</span>
+      <span>Computational Biology Pre-College Final Project</span>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
