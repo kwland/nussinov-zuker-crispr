@@ -1,13 +1,10 @@
 /*
- * Fold Lab UI wiring.
+ * Core UI: navigation, the Fold Lab, and the shared helpers that the other
+ * chapters (js/chapters.js) build on.
  *
- * Everything runs client-side: RNA.nussinov / RNA.zuker do the science,
- * Viewer3D draws the structure, Hero draws the helix behind the masthead, and
- * this file connects them to the DOM.
- *
- * The page is one scrolling document with four chapters (no tab panels), so
- * every canvas is always laid out and measurable. Navigation is anchor links
- * plus a scroll-spy that lights the active chapter in the nav and side rail.
+ * The page is one scrolling document, so every canvas is always laid out and
+ * measurable. Navigation is anchor links plus a scroll spy that lights the
+ * active chapter in the nav and the side rail.
  */
 
 (function () {
@@ -27,17 +24,163 @@
 
   var BASE_COLORS = { A: "#5ee6c5", U: "#ffb454", G: "#7aa2ff", C: "#ff6fa5" };
 
-  var state = {
-    model: "both",
-    dataModel: "nussinov",
-    nussinov: null,
-    zuker: null,
-    guides: [],
-    matrixCells: null
-  };
+  var CHAPTERS = ["lab", "analyzer", "designer", "dataset", "check", "learn", "method", "about"];
 
+  var state = { model: "both", nussinov: null, zuker: null, matrixCells: null };
   var viewer = null;
   var foldTimer = null;
+
+  // ------------------------------------------------------- shared helpers
+
+  function escapeHtml(text) {
+    var div = document.createElement("div");
+    div.textContent = String(text);
+    return div.innerHTML;
+  }
+
+  function csvCell(value) {
+    var text = String(value);
+    return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+  }
+
+  function downloadCsv(filename, lines) {
+    var blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  function setupCanvas(canvas) {
+    var ratio = Math.min(window.devicePixelRatio || 1, 2);
+    var rect = canvas.getBoundingClientRect();
+    var w = Math.max(1, rect.width);
+    var h = Math.max(1, rect.height);
+    var wantW = Math.floor(w * ratio);
+    var wantH = Math.floor(h * ratio);
+    if (canvas.width !== wantW || canvas.height !== wantH) {
+      canvas.width = wantW;
+      canvas.height = wantH;
+    }
+    var ctx = canvas.getContext("2d");
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return { ctx: ctx, w: w, h: h };
+  }
+
+  /*
+   * Arc diagram. Pairs in setA arc above the backbone, setB below, so two
+   * folds of the same strand can be compared at a glance.
+   */
+  function drawArcDiagram(canvas, sequence, setA, setB, options) {
+    options = options || {};
+    var env = setupCanvas(canvas);
+    var ctx = env.ctx;
+    var n = sequence.length;
+    if (!n) return env;
+
+    var both = !!(setA && setB);
+    var pad = 24;
+    var baseline = both ? env.h * 0.5 : env.h * 0.76;
+    var step = n > 1 ? (env.w - pad * 2) / (n - 1) : 0;
+
+    function xOf(i) {
+      return pad + step * i;
+    }
+    function arc(pairs, color, up, limit) {
+      if (!pairs) return;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = n > 90 ? 1 : 1.5;
+      for (var p = 0; p < pairs.length; p++) {
+        var x1 = xOf(pairs[p][0]);
+        var x2 = xOf(pairs[p][1]);
+        var height = Math.min(limit, 12 + (x2 - x1) * 0.42);
+        var dir = up ? -1 : 1;
+        ctx.beginPath();
+        ctx.moveTo(x1, baseline + dir * 5);
+        ctx.bezierCurveTo(x1, baseline + dir * height, x2, baseline + dir * height, x2, baseline + dir * 5);
+        ctx.stroke();
+      }
+    }
+
+    arc(setA, options.colorA || ARC_A, true, baseline - 12);
+    if (both) arc(setB, options.colorB || ARC_B, false, env.h - baseline - 12);
+
+    ctx.strokeStyle = "rgba(160, 190, 205, 0.22)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(xOf(0), baseline);
+    ctx.lineTo(xOf(n - 1), baseline);
+    ctx.stroke();
+
+    var seedFrom = options.seedFrom != null ? options.seedFrom : -1;
+    var seedTo = options.seedTo != null ? options.seedTo : -1;
+    var r = n > 120 ? 1.8 : n > 90 ? 2.2 : n > 40 ? 3.8 : 6.2;
+
+    for (var i = 0; i < n; i++) {
+      var x = xOf(i);
+      ctx.beginPath();
+      ctx.fillStyle = BASE_COLORS[sequence[i]] || "#9fb6ad";
+      ctx.arc(x, baseline, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (i >= seedFrom && i < seedTo) {
+        ctx.strokeStyle = SEED;
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.arc(x, baseline, r + 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      if (r >= 6) {
+        ctx.fillStyle = "#080e13";
+        ctx.font = "700 8px 'Jost', system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(sequence[i], x, baseline + 0.5);
+      }
+    }
+
+    // Marks where the spacer ends and the scaffold begins.
+    if (options.divider != null && options.divider > 0 && options.divider < n) {
+      var dx = xOf(options.divider) - step / 2;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.22)";
+      ctx.setLineDash([3, 3]);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(dx, 8);
+      ctx.lineTo(dx, env.h - 8);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "rgba(200, 220, 230, 0.5)";
+      ctx.font = "9px 'Jost', system-ui, sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("scaffold", dx + 5, 14);
+    }
+    return env;
+  }
+
+  function swatch(color, label) {
+    return '<span><i class="swatch" style="background:' + color + '"></i>' + label + "</span>";
+  }
+
+  window.FoldUI = {
+    $: $,
+    $$: $$,
+    escapeHtml: escapeHtml,
+    csvCell: csvCell,
+    downloadCsv: downloadCsv,
+    setupCanvas: setupCanvas,
+    drawArcDiagram: drawArcDiagram,
+    swatch: swatch,
+    BASE_COLORS: BASE_COLORS,
+    ARC_A: ARC_A,
+    ARC_B: ARC_B,
+    SEED: SEED
+  };
 
   // ------------------------------------------------------------- navigation
 
@@ -48,30 +191,21 @@
     window.scrollTo({ top: top, behavior: "smooth" });
   }
 
-  function setActiveNav(id) {
-    $$("[data-nav]").forEach(function (link) {
-      link.classList.toggle("is-active", link.dataset.nav === id);
-    });
-  }
-
   function initScrollSpy() {
-    var sections = ["lab", "data", "method", "about"]
-      .map(function (id) {
-        return document.getElementById(id);
-      })
-      .filter(Boolean);
+    var sections = CHAPTERS.map(function (id) {
+      return document.getElementById(id);
+    }).filter(Boolean);
 
     function update() {
-      var masthead = $(".masthead");
-      masthead.classList.toggle("is-stuck", window.pageYOffset > 40);
-
-      // Active chapter = the last one whose top has passed the reading line.
+      $(".masthead").classList.toggle("is-stuck", window.pageYOffset > 40);
       var line = window.innerHeight * 0.35;
       var current = null;
       for (var i = 0; i < sections.length; i++) {
         if (sections[i].getBoundingClientRect().top <= line) current = sections[i].id;
       }
-      setActiveNav(current);
+      $$("[data-nav]").forEach(function (link) {
+        link.classList.toggle("is-active", link.dataset.nav === current);
+      });
     }
 
     var ticking = false;
@@ -95,19 +229,15 @@
     $(".nav-toggle").setAttribute("aria-expanded", "false");
   }
 
-  // ------------------------------------------------------------- folding
+  // ---------------------------------------------------------------- folding
 
   function runFold() {
     var error = $("#errorText");
     var status = $("#inputStatus");
     error.textContent = "";
 
-    var raw = $("#sequenceInput").value;
-    var minLoop = Number($("#loopLength").value);
-    var wobble = $("#allowWobble").checked;
-
     try {
-      var seq = RNA.normalize(raw);
+      var seq = RNA.normalize($("#sequenceInput").value);
       $("#charCount").textContent = seq.length;
 
       if (!seq.length) {
@@ -118,10 +248,8 @@
         status.classList.remove("is-warn");
         return;
       }
-
-      state.nussinov = RNA.nussinov(seq, minLoop, wobble);
-      // Zuker's loop tables assume a minimum hairpin of 3, so it ignores the slider.
-      state.zuker = RNA.zuker(seq, wobble);
+      state.nussinov = RNA.nussinov(seq, Number($("#loopLength").value), $("#allowWobble").checked);
+      state.zuker = RNA.zuker(seq, $("#allowWobble").checked);
       renderAll();
     } catch (err) {
       error.textContent = err.message;
@@ -134,8 +262,6 @@
     clearTimeout(foldTimer);
     foldTimer = setTimeout(runFold, 180);
   }
-
-  // ------------------------------------------------------------ rendering
 
   function activeFold() {
     return state.model === "zuker" ? state.zuker : state.nussinov;
@@ -154,13 +280,10 @@
   function renderMetrics() {
     var n = state.nussinov;
     var z = state.zuker;
-    var showA = state.model === "nussinov" || state.model === "both";
-    var showB = state.model === "zuker" || state.model === "both";
-
     var metrics = $$("#metricGrid .metric");
-    metrics[0].classList.toggle("is-dim", !showA);
+    metrics[0].classList.toggle("is-dim", state.model === "zuker");
     metrics[0].classList.add("accent-a");
-    metrics[1].classList.toggle("is-dim", !showB);
+    metrics[1].classList.toggle("is-dim", state.model === "nussinov");
     metrics[1].classList.add("accent-b");
 
     $("#pairCount").textContent = n ? String(n.pairs.length) : "0";
@@ -176,46 +299,41 @@
       var paired = RNA.pairedPositions(fold.pairs);
       var start = seq.length - RNA.SEED_LENGTH;
       var open = 0;
-      for (var i = start; i < seq.length; i++) {
-        if (!paired[i]) open++;
-      }
+      for (var i = start; i < seq.length; i++) if (!paired[i]) open++;
       $("#seedOpen").textContent = Math.round((open / RNA.SEED_LENGTH) * 100) + "%";
     }
 
     var status = $("#inputStatus");
+    var list = $("#warningList");
+    list.innerHTML = "";
     if (!fold || !seq.length) {
       status.textContent = "ready";
       status.classList.remove("is-warn");
       return;
     }
-    var list = $("#warningList");
-    list.innerHTML = "";
 
-    // Warnings are guide-design rules, so they only mean something for a 20 nt
-    // spacer. Suppress them everywhere at once — otherwise the pill counts
-    // warnings the panel below says do not apply.
+    // Guide design rules only mean something for a 20 letter spacer. Suppress
+    // them everywhere at once, or the pill counts warnings the panel denies.
     if (seq.length !== 20) {
       status.textContent = "ready";
       status.classList.remove("is-warn");
-      list.innerHTML = '<span class="warn-tag ok">Guide-design checks apply to 20 nt spacers</span>';
+      list.innerHTML = '<span class="warn-tag ok">Guide checks apply to 20 letter spacers. Try the Analyzer.</span>';
       return;
     }
 
-    var scored = RNA.scoreGuide(seq, state.model === "zuker" ? "zuker" : "nussinov");
-    status.textContent = scored.warnings.length
-      ? scored.warnings.length + " warning" + (scored.warnings.length > 1 ? "s" : "")
-      : "ready";
-    status.classList.toggle("is-warn", scored.warnings.length > 0);
-
-    if (!scored.warnings.length) {
-      list.innerHTML = '<span class="warn-tag ok">No design warnings</span>';
-    } else {
-      list.innerHTML = scored.warnings
-        .map(function (w) {
-          return '<span class="warn-tag">' + escapeHtml(w) + "</span>";
-        })
-        .join("");
-    }
+    var scored = GuideTools.analyzeGuide(seq, {
+      algorithm: state.model === "zuker" ? "zuker" : "nussinov",
+      withScaffold: false
+    });
+    status.textContent = scored.flags.length ? scored.flags.length + " to check" : "ready";
+    status.classList.toggle("is-warn", scored.flags.length > 0);
+    list.innerHTML = scored.flags.length
+      ? scored.flags
+          .map(function (w) {
+            return '<span class="warn-tag">' + escapeHtml(w) + "</span>";
+          })
+          .join("")
+      : '<span class="warn-tag ok">Nothing to flag</span>';
   }
 
   function renderDotRows() {
@@ -223,7 +341,6 @@
     $("#normalizedSequence").textContent = fold ? fold.sequence : "";
     $("#dotBracket").textContent = state.nussinov ? state.nussinov.structure : "";
     $("#dotBracketZuker").textContent = state.zuker ? state.zuker.structure : "";
-
     $("#nussinovRow").style.display = state.model === "zuker" ? "none" : "flex";
     $("#zukerRow").style.display = state.model === "nussinov" ? "none" : "flex";
   }
@@ -233,21 +350,19 @@
     var n = state.nussinov;
     var z = state.zuker;
     if (!n || !n.sequence.length) {
-      el.textContent = "Enter an RNA or DNA sequence to fold it.";
+      el.textContent = "Type a strand above to fold it.";
       return;
     }
-
     var parts = [];
-    if (state.model !== "zuker") parts.push("Nussinov finds " + n.pairs.length + " base pairs");
+    if (state.model !== "zuker") parts.push("Nussinov finds " + n.pairs.length + " pairs");
     if (state.model !== "nussinov") {
       parts.push("Zuker settles at " + z.energy.toFixed(1) + " kcal/mol with " + z.pairs.length + " pairs");
     }
-    parts.push(RNA.gcPercent(n.sequence).toFixed(0) + "% GC");
-
+    parts.push(RNA.gcPercent(n.sequence).toFixed(0) + "% G/C");
     var text = parts.join(" · ") + ".";
     if (state.model === "both" && z.pairs.length < n.pairs.length) {
       text +=
-        " Zuker predicts fewer pairs because energy-based folding will not pay the loop cost for pairs that do not stack — Nussinov counts them anyway.";
+        " Zuker makes fewer pairs here. It will not pay the loop cost for a pair that does not stack onto anything, and Nussinov counts it anyway.";
     }
     el.textContent = text;
   }
@@ -264,174 +379,93 @@
     var z = state.zuker;
     var cmp = RNA.comparePairs(n.sequence.length, n.pairs, z.pairs);
 
-    $("#agreementPill").textContent = Math.round(cmp.agreement * 100) + "% agreement";
+    $("#agreementPill").textContent = Math.round(cmp.agreement * 100) + "% agree";
     $("#agreementPill").classList.toggle("is-warn", cmp.agreement < 0.5);
 
     $("#compareStats").innerHTML = [
-      stat("Shared pairs", cmp.shared),
-      stat("Nussinov only", cmp.onlyA),
-      stat("Zuker only", cmp.onlyB),
-      stat("Zuker MFE", z.energy.toFixed(1))
+      stat("Agreed pairs", cmp.shared, "both folders picked these"),
+      stat("Nussinov only", cmp.onlyA, "pair counting alone"),
+      stat("Zuker only", cmp.onlyB, "energy alone"),
+      stat("Zuker energy", z.energy.toFixed(1), "kcal/mol")
     ].join("");
 
     var note;
     if (cmp.shared === 0 && n.pairs.length) {
       note =
-        "The two models agree on nothing here. That usually means the sequence has no thermodynamically favourable stem, so Nussinov's pairs are artefacts of counting rather than real structure.";
+        "They agree on nothing here. That usually means the strand has no stable stem at all, so Nussinov's pairs are an artefact of counting rather than a real shape.";
     } else if (cmp.onlyA > cmp.onlyB) {
       note =
         "Nussinov claims " +
         cmp.onlyA +
-        " pair(s) that Zuker rejects. These are typically isolated pairs: they add +1 to a base-pair count, but they cost more loop energy than the single stack repays.";
+        " pair(s) Zuker throws out. Those are usually lone pairs: worth +1 if you are counting, but they cost more in loop energy than the single stack gives back.";
     } else if (cmp.onlyB > 0) {
       note =
-        "Zuker forms " +
+        "Zuker makes " +
         cmp.onlyB +
-        " pair(s) Nussinov misses, because extending a stem is energetically favourable even when it does not raise the total pair count.";
+        " pair(s) Nussinov misses, because growing a stem pays for itself even when it does not raise the total count.";
     } else {
       note =
-        "Both models converge on the same structure. That happens when the fold is dominated by one clean stem, where counting pairs and minimizing energy point the same way.";
+        "Both land on the same shape. That happens when one clean stem dominates, and counting pairs and minimising energy point the same way. Two different methods agreeing is real evidence the shape is right.";
     }
     $("#compareNote").textContent = note;
   }
 
-  function stat(label, value) {
-    return '<div class="compare-stat"><span>' + label + "</span><strong>" + value + "</strong></div>";
+  function stat(label, value, hint) {
+    return (
+      '<div class="compare-stat"><span>' +
+      label +
+      "</span><strong>" +
+      value +
+      "</strong>" +
+      (hint ? '<em class="stat-hint">' + hint + "</em>" : "") +
+      "</div>"
+    );
   }
 
-  // ------------------------------------------------------------ arc diagram
-
-  function setupCanvas(canvas) {
-    var ratio = Math.min(window.devicePixelRatio || 1, 2);
-    var rect = canvas.getBoundingClientRect();
-    var w = Math.max(1, rect.width);
-    var h = Math.max(1, rect.height);
-    var wantW = Math.floor(w * ratio);
-    var wantH = Math.floor(h * ratio);
-    if (canvas.width !== wantW || canvas.height !== wantH) {
-      canvas.width = wantW;
-      canvas.height = wantH;
-    }
-    var ctx = canvas.getContext("2d");
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    return { ctx: ctx, w: w, h: h };
-  }
+  // ------------------------------------------------------------ diagrams
 
   function drawArcs() {
-    var canvas = $("#rnaCanvas");
-    var env = setupCanvas(canvas);
-    var ctx = env.ctx;
     var fold = state.nussinov;
     var legend = $("#arcLegend");
-
     if (!fold || !fold.sequence.length) {
+      setupCanvas($("#rnaCanvas"));
       legend.innerHTML = "";
       return;
     }
-
     var seq = fold.sequence;
     var n = seq.length;
     var both = state.model === "both";
-    var pad = 26;
-    var baseline = both ? env.h * 0.5 : env.h * 0.76;
-    var step = n > 1 ? (env.w - pad * 2) / (n - 1) : 0;
-    var maxUp = baseline - 14;
-    var maxDown = env.h - baseline - 14;
+    var seedFrom = n >= RNA.SEED_LENGTH ? n - RNA.SEED_LENGTH : n;
 
-    function xOf(i) {
-      return pad + step * i;
-    }
-
-    function arc(pairs, color, up, limit) {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = n > 90 ? 1 : 1.5;
-      for (var p = 0; p < pairs.length; p++) {
-        var x1 = xOf(pairs[p][0]);
-        var x2 = xOf(pairs[p][1]);
-        var height = Math.min(limit, 14 + (x2 - x1) * 0.42);
-        var dir = up ? -1 : 1;
-        ctx.beginPath();
-        ctx.moveTo(x1, baseline + dir * 6);
-        ctx.bezierCurveTo(x1, baseline + dir * height, x2, baseline + dir * height, x2, baseline + dir * 6);
-        ctx.stroke();
-      }
-    }
-
-    if (state.model === "nussinov") {
-      arc(state.nussinov.pairs, ARC_A, true, maxUp);
-    } else if (state.model === "zuker") {
-      arc(state.zuker.pairs, ARC_B, true, maxUp);
-    } else {
-      arc(state.nussinov.pairs, ARC_A, true, maxUp);
-      arc(state.zuker.pairs, ARC_B, false, maxDown);
-    }
-
-    ctx.strokeStyle = "rgba(160, 190, 205, 0.22)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(xOf(0), baseline);
-    ctx.lineTo(xOf(n - 1), baseline);
-    ctx.stroke();
-
-    var seedStart = n >= RNA.SEED_LENGTH ? n - RNA.SEED_LENGTH : n;
-    var r = n > 90 ? 2.2 : n > 40 ? 3.8 : 6.2;
-
-    for (var i = 0; i < n; i++) {
-      var x = xOf(i);
-      ctx.beginPath();
-      ctx.fillStyle = BASE_COLORS[seq[i]] || "#9fb6ad";
-      ctx.arc(x, baseline, r, 0, Math.PI * 2);
-      ctx.fill();
-
-      if (i >= seedStart) {
-        ctx.strokeStyle = SEED;
-        ctx.lineWidth = 1.3;
-        ctx.beginPath();
-        ctx.arc(x, baseline, r + 2, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
-      if (r >= 6) {
-        ctx.fillStyle = "#080e13";
-        ctx.font = "700 8px 'Jost', system-ui, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(seq[i], x, baseline + 0.5);
-      }
-    }
+    drawArcDiagram(
+      $("#rnaCanvas"),
+      seq,
+      state.model === "zuker" ? state.zuker.pairs : state.nussinov.pairs,
+      both ? state.zuker.pairs : null,
+      { seedFrom: seedFrom, seedTo: n, colorA: state.model === "zuker" ? ARC_B : ARC_A }
+    );
 
     var items = [];
-    if (state.model !== "zuker") {
-      items.push('<span><i class="swatch" style="background:' + ARC_A + '"></i>Nussinov' + (both ? " (above)" : "") + "</span>");
-    }
-    if (state.model !== "nussinov") {
-      items.push('<span><i class="swatch" style="background:' + ARC_B + '"></i>Zuker' + (both ? " (below)" : "") + "</span>");
-    }
-    if (n >= RNA.SEED_LENGTH) {
-      items.push('<span><i class="swatch" style="background:' + SEED + '"></i>seed (last 8 nt)</span>');
-    }
+    if (state.model !== "zuker") items.push(swatch(ARC_A, "Nussinov" + (both ? " (above)" : "")));
+    if (state.model !== "nussinov") items.push(swatch(ARC_B, "Zuker" + (both ? " (below)" : "")));
+    if (n >= RNA.SEED_LENGTH) items.push(swatch(SEED, "last 8 letters"));
     legend.innerHTML = items.join("");
   }
 
-  // ---------------------------------------------------------------- matrix
-
   function drawMatrix() {
-    var canvas = $("#matrixCanvas");
-    var env = setupCanvas(canvas);
+    var env = setupCanvas($("#matrixCanvas"));
     var ctx = env.ctx;
     var useZuker = state.model === "zuker";
 
-    $("#matrixTitle").textContent = useZuker ? "Zuker energy matrix (W)" : "Nussinov score matrix";
-    $(".matrix-legend").firstElementChild.textContent = useZuker ? "0 kcal/mol" : "fewer pairs";
-    $(".matrix-legend").lastElementChild.textContent = useZuker ? "most stable" : "more pairs";
+    $("#matrixTitle").textContent = useZuker ? "Zuker grid" : "Nussinov grid";
+    $(".matrix-legend").firstElementChild.textContent = useZuker ? "less stable" : "fewer pairs";
+    $(".matrix-legend").lastElementChild.textContent = useZuker ? "more stable" : "more pairs";
 
     var fold = useZuker ? state.zuker : state.nussinov;
     if (!fold || !fold.sequence.length) {
       state.matrixCells = null;
       return;
     }
-
     var n = fold.sequence.length;
     var grid = useZuker ? fold.W : fold.dp;
     if (!grid) return;
@@ -441,7 +475,7 @@
     var ox = (env.w - size) / 2;
     var oy = (env.h - size) / 2;
 
-    // Normalize: Nussinov counts up from 0, Zuker energies run down from 0.
+    // Nussinov counts up from 0; Zuker energies run down from 0.
     var best = 1;
     for (var a = 0; a < n; a++) {
       for (var b = a; b < n; b++) {
@@ -449,21 +483,16 @@
         if (val > best) best = val;
       }
     }
-
     for (var i = 0; i < n; i++) {
       for (var j = 0; j < n; j++) {
-        var x = ox + j * cell;
-        var y = oy + i * cell;
-        if (j < i) {
-          ctx.fillStyle = "#080e13";
-        } else {
+        if (j < i) ctx.fillStyle = "#080e13";
+        else {
           var v = useZuker ? -grid[i][j] : grid[i][j];
           ctx.fillStyle = ramp(Math.max(0, Math.min(1, v / best)));
         }
-        ctx.fillRect(x, y, Math.ceil(cell), Math.ceil(cell));
+        ctx.fillRect(ox + j * cell, oy + i * cell, Math.ceil(cell), Math.ceil(cell));
       }
     }
-
     if (n <= 60) {
       ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
       ctx.lineWidth = 0.5;
@@ -477,8 +506,6 @@
         ctx.stroke();
       }
     }
-
-    // The whole-molecule answer lives in the top-right corner.
     ctx.strokeStyle = SEED;
     ctx.lineWidth = 1.6;
     ctx.strokeRect(ox + (n - 1) * cell, oy, cell, cell);
@@ -507,8 +534,6 @@
     );
   }
 
-  // ---------------------------------------------------------------- viewer
-
   function updateViewer() {
     if (!viewer) return;
     var fold = activeFold();
@@ -516,297 +541,9 @@
       viewer.setModel("", [], 0);
       return;
     }
-    var seedStart = fold.sequence.length >= RNA.SEED_LENGTH ? fold.sequence.length - RNA.SEED_LENGTH : fold.sequence.length;
+    var seedStart =
+      fold.sequence.length >= RNA.SEED_LENGTH ? fold.sequence.length - RNA.SEED_LENGTH : fold.sequence.length;
     viewer.setModel(fold.sequence, fold.pairs, seedStart);
-  }
-
-  // ----------------------------------------------------------- guide data
-
-  function guideCard(item) {
-    var isPlaceholder = item.spacer.indexOf("REPLACE_WITH") !== -1;
-    var badgeClass = item.group.indexOf("bad") !== -1 ? "bad" : item.group.indexOf("random") !== -1 ? "random" : "known";
-
-    if (isPlaceholder) {
-      return (
-        '<article class="guide-card is-placeholder">' +
-        '<div class="guide-head"><div><h3>' +
-        escapeHtml(item.name) +
-        '</h3><p class="guide-notes">' +
-        escapeHtml(item.notes) +
-        '</p></div><span class="badge ' +
-        badgeClass +
-        '">' +
-        escapeHtml(item.group) +
-        "</span></div>" +
-        '<p class="sequence-text">' +
-        escapeHtml(item.spacer) +
-        "</p>" +
-        '<p class="guide-notes"><strong>Status:</strong> ' +
-        escapeHtml(item.status) +
-        "</p>" +
-        "</article>"
-      );
-    }
-
-    var score = RNA.scoreGuide(item.spacer, state.dataModel);
-    var seedPct = Math.round(score.seedAccessibility * 100);
-    var selfPct = Math.round(Math.min(1, score.selfPairFraction) * 100);
-
-    return (
-      '<article class="guide-card">' +
-      '<div class="guide-head"><div><h3>' +
-      escapeHtml(item.name) +
-      '</h3><p class="guide-notes">' +
-      escapeHtml(item.notes) +
-      '</p></div><span class="badge ' +
-      badgeClass +
-      '">' +
-      escapeHtml(item.group) +
-      "</span></div>" +
-      '<p class="sequence-text">' +
-      escapeHtml(item.spacer) +
-      "</p>" +
-      '<div class="bar-group">' +
-      bar("Seed accessibility", seedPct, false) +
-      bar("Self-pair fraction", selfPct, true) +
-      "</div>" +
-      '<p class="sequence-text">' +
-      escapeHtml(score.structure) +
-      "</p>" +
-      '<p class="guide-notes">' +
-      (state.dataModel === "zuker"
-        ? "<strong>MFE:</strong> " + score.energy.toFixed(1) + " kcal/mol · "
-        : "<strong>Pairs:</strong> " + score.pairCount + " · ") +
-      "<strong>GC:</strong> " +
-      score.gc.toFixed(0) +
-      "% · <strong>Warnings:</strong> " +
-      (score.warnings.length ? escapeHtml(score.warnings.join(", ")) : "none") +
-      "</p>" +
-      '<div class="guide-foot"><button class="btn btn-ghost btn-sm" type="button" data-load-guide="' +
-      escapeHtml(item.spacer) +
-      '">Load in Fold Lab</button></div>' +
-      "</article>"
-    );
-  }
-
-  function bar(label, pct, warn) {
-    return (
-      '<div><div class="bar-label"><span>' +
-      label +
-      "</span><b>" +
-      pct +
-      '%</b></div><div class="bar-track"><div class="bar-fill' +
-      (warn ? " warning" : "") +
-      '" style="width:' +
-      pct +
-      '%"></div></div></div>'
-    );
-  }
-
-  function renderGuideSummary() {
-    var ready = state.guides.filter(function (g) {
-      return g.spacer.indexOf("REPLACE_WITH") === -1;
-    });
-    var scored = ready.map(function (g) {
-      return RNA.scoreGuide(g.spacer, state.dataModel);
-    });
-
-    var avgSeed = scored.length
-      ? scored.reduce(function (s, g) {
-          return s + g.seedAccessibility;
-        }, 0) / scored.length
-      : 0;
-    var warnings = scored.reduce(function (s, g) {
-      return s + g.warnings.length;
-    }, 0);
-
-    var second =
-      state.dataModel === "zuker"
-        ? {
-            label: "Average MFE",
-            value: scored.length
-              ? (
-                  scored.reduce(function (s, g) {
-                    return s + g.energy;
-                  }, 0) / scored.length
-                ).toFixed(1)
-              : "0.0"
-          }
-        : {
-            label: "Average pairs",
-            value: scored.length
-              ? (
-                  scored.reduce(function (s, g) {
-                    return s + g.pairCount;
-                  }, 0) / scored.length
-                ).toFixed(1)
-              : "0.0"
-          };
-
-    $("#guideSummary").innerHTML = [
-      '<div class="summary-stat"><span>Ready sequences</span><strong>' + ready.length + "/" + state.guides.length + "</strong></div>",
-      '<div class="summary-stat"><span>Average seed open</span><strong>' + Math.round(avgSeed * 100) + "%</strong></div>",
-      '<div class="summary-stat"><span>' + second.label + "</span><strong>" + second.value + "</strong></div>",
-      '<div class="summary-stat"><span>Design warnings</span><strong>' + warnings + "</strong></div>"
-    ].join("");
-  }
-
-  function renderGuides() {
-    $("#guideCards").innerHTML = state.guides.map(guideCard).join("");
-    renderGuideSummary();
-    drawGuideChart();
-    attachGuideLoaders();
-    observeReveal();
-  }
-
-  function attachGuideLoaders() {
-    $$("[data-load-guide]").forEach(function (button) {
-      button.addEventListener("click", function () {
-        $("#sequenceInput").value = button.dataset.loadGuide;
-        runFold();
-        scrollToSection("lab");
-      });
-    });
-  }
-
-  function drawGuideChart() {
-    var canvas = $("#guideChart");
-    if (!canvas) return;
-    var env = setupCanvas(canvas);
-    var ctx = env.ctx;
-
-    var ready = state.guides.filter(function (g) {
-      return g.spacer.indexOf("REPLACE_WITH") === -1;
-    });
-    if (!ready.length) return;
-
-    var rows = ready.map(function (g) {
-      var s = RNA.scoreGuide(g.spacer, state.dataModel);
-      return { name: g.name, seed: s.seedAccessibility, self: Math.min(1, s.selfPairFraction) };
-    });
-
-    var padL = Math.min(150, env.w * 0.3);
-    var padR = 54;
-    var padT = 28;
-    var padB = 30;
-    var plotW = env.w - padL - padR;
-    var rowH = (env.h - padT - padB) / rows.length;
-
-    ctx.font = "10px 'Jost', system-ui, sans-serif";
-    ctx.textBaseline = "middle";
-    for (var t = 0; t <= 4; t++) {
-      var x = padL + (plotW * t) / 4;
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x, padT - 6);
-      ctx.lineTo(x, env.h - padB + 4);
-      ctx.stroke();
-      ctx.fillStyle = "rgba(147, 164, 177, 0.6)";
-      ctx.textAlign = "center";
-      ctx.fillText(t * 25 + "%", x, env.h - padB + 14);
-    }
-
-    rows.forEach(function (row, index) {
-      var y = padT + rowH * index;
-      var barH = Math.min(9, rowH * 0.26);
-      var gap = 5;
-
-      ctx.fillStyle = "rgba(238, 243, 247, 0.8)";
-      ctx.font = "10.5px 'Jost', system-ui, sans-serif";
-      ctx.textAlign = "right";
-      ctx.fillText(truncate(row.name, 22), padL - 12, y + rowH / 2 - 1);
-
-      var yA = y + rowH / 2 - barH - gap / 2;
-      var yB = y + rowH / 2 + gap / 2;
-
-      ctx.fillStyle = ARC_A;
-      ctx.fillRect(padL, yA, Math.max(1, plotW * row.seed), barH);
-      ctx.fillStyle = ARC_B;
-      ctx.fillRect(padL, yB, Math.max(1, plotW * row.self), barH);
-
-      ctx.fillStyle = "rgba(147, 164, 177, 0.8)";
-      ctx.font = "10px 'Jost', system-ui, sans-serif";
-      ctx.textAlign = "left";
-      ctx.fillText(Math.round(row.seed * 100) + "%", padL + plotW * row.seed + 7, yA + barH / 2);
-      ctx.fillText(Math.round(row.self * 100) + "%", padL + plotW * row.self + 7, yB + barH / 2);
-    });
-
-    ctx.textAlign = "left";
-    ctx.font = "10px 'Jost', system-ui, sans-serif";
-    ctx.fillStyle = ARC_A;
-    ctx.fillRect(padL, 9, 12, 3);
-    ctx.fillStyle = "rgba(147, 164, 177, 0.8)";
-    ctx.fillText("seed accessibility", padL + 18, 10);
-    ctx.fillStyle = ARC_B;
-    ctx.fillRect(padL + 126, 9, 12, 3);
-    ctx.fillStyle = "rgba(147, 164, 177, 0.8)";
-    ctx.fillText("self-pairing", padL + 144, 10);
-  }
-
-  function truncate(text, max) {
-    return text.length > max ? text.slice(0, max - 1) + "…" : text;
-  }
-
-  function downloadCsv() {
-    var columns = [
-      "name",
-      "group",
-      "spacer",
-      "model",
-      "length",
-      "gc_percent",
-      "pairs",
-      "mfe_kcal_mol",
-      "self_pair_fraction",
-      "dot_bracket",
-      "seed_accessibility",
-      "warnings",
-      "status"
-    ];
-    var lines = [columns.join(",")];
-
-    state.guides.forEach(function (g) {
-      if (g.spacer.indexOf("REPLACE_WITH") !== -1) {
-        lines.push([g.name, g.group, g.spacer, state.dataModel, "", "", "", "", "", "", "", "", "needs_sequence"].map(csvCell).join(","));
-        return;
-      }
-      var s = RNA.scoreGuide(g.spacer, state.dataModel);
-      lines.push(
-        [
-          g.name,
-          g.group,
-          g.spacer,
-          state.dataModel,
-          s.sequence.length,
-          s.gc.toFixed(1),
-          s.pairCount,
-          s.energy != null ? s.energy.toFixed(2) : "",
-          s.selfPairFraction.toFixed(3),
-          s.structure,
-          s.seedAccessibility.toFixed(3),
-          s.warnings.join(";") || "none",
-          "ok"
-        ]
-          .map(csvCell)
-          .join(",")
-      );
-    });
-
-    var blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    var url = URL.createObjectURL(blob);
-    var link = document.createElement("a");
-    link.href = url;
-    link.download = "guide_fold_features_" + state.dataModel + ".csv";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }
-
-  function csvCell(value) {
-    var text = String(value);
-    return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
   }
 
   // ------------------------------------------------------------ stack table
@@ -824,7 +561,6 @@
       ["G", "C", "G", "C"],
       ["G", "C", "C", "G"]
     ];
-
     var values = rows.map(function (r) {
       return RNA.stackEnergy(r[0], r[1], r[2], r[3]);
     });
@@ -833,21 +569,18 @@
     $("#stackTable").innerHTML = rows
       .map(function (r, index) {
         var energy = values[index];
-        var strength = energy / min; // 1 = most stabilizing
+        var strength = energy / min;
         var duplex = "5'-" + r[0] + r[2] + "-3'\n3'-" + r[1] + r[3] + "-5'";
         return (
           '<div class="stack-cell" style="background: rgba(79, 216, 232, ' +
           (0.03 + strength * 0.12).toFixed(3) +
-          ')">' +
-          '<div class="stack-duplex">' +
+          ')"><div class="stack-duplex">' +
           duplex +
-          "</div>" +
-          '<div class="stack-energy" style="color: ' +
+          '</div><div class="stack-energy" style="color: ' +
           (strength > 0.75 ? MODEL_A : "#fff") +
           '">' +
           energy.toFixed(2) +
-          "</div>" +
-          "</div>"
+          "</div></div>"
         );
       })
       .join("");
@@ -857,7 +590,7 @@
 
   function observeReveal() {
     if (!("IntersectionObserver" in window)) return;
-    var targets = $$(".card:not(.reveal), .guide-card:not(.reveal), .summary-stat:not(.reveal)");
+    var targets = $$(".card:not(.reveal), .summary-stat:not(.reveal)");
     var observer = new IntersectionObserver(
       function (entries) {
         entries.forEach(function (entry) {
@@ -867,55 +600,16 @@
           }
         });
       },
-      { threshold: 0.06 }
+      { threshold: 0.04 }
     );
     targets.forEach(function (element) {
       element.classList.add("reveal");
       observer.observe(element);
     });
   }
-
-  function escapeHtml(text) {
-    var div = document.createElement("div");
-    div.textContent = String(text);
-    return div.innerHTML;
-  }
+  window.FoldUI.observeReveal = observeReveal;
 
   // ------------------------------------------------------------------ init
-
-  var FALLBACK_GUIDES = [
-    {
-      name: "random_control_1",
-      group: "random control",
-      spacer: "CTTAAGGGTTAAGTAAGTGT",
-      status: "ready",
-      notes: "Length-matched 20 nt control with moderate GC content."
-    },
-    {
-      name: "bad_high_gc_self_pair",
-      group: "bad control",
-      spacer: "GCGCGATACGCGTATCGCGC",
-      status: "ready",
-      notes: "High-GC sequence designed to fold back on itself."
-    }
-  ];
-
-  function loadGuides() {
-    fetch("data/guide_examples.json")
-      .then(function (response) {
-        if (!response.ok) throw new Error("guide data unavailable");
-        return response.json();
-      })
-      .then(function (data) {
-        state.guides = data;
-        renderGuides();
-      })
-      .catch(function () {
-        // Keeps the page usable when opened straight from the filesystem.
-        state.guides = FALLBACK_GUIDES;
-        renderGuides();
-      });
-  }
 
   function randomSpacer() {
     var bases = "ACGT";
@@ -929,33 +623,26 @@
       event.preventDefault();
       runFold();
     });
-
     $("#sequenceInput").addEventListener("input", scheduleFold);
-
     $("#loopLength").addEventListener("input", function (event) {
       $("#loopLengthValue").textContent = event.target.value;
       scheduleFold();
     });
-
     $("#allowWobble").addEventListener("change", runFold);
-
     $("#clearSequence").addEventListener("click", function () {
       $("#sequenceInput").value = "";
       runFold();
     });
-
     $("#randomGuide").addEventListener("click", function () {
       $("#sequenceInput").value = randomSpacer();
       runFold();
     });
-
     $$("[data-example]").forEach(function (button) {
       button.addEventListener("click", function () {
         $("#sequenceInput").value = button.dataset.example;
         runFold();
       });
     });
-
     $$('input[name="model"]').forEach(function (radio) {
       radio.addEventListener("change", function () {
         state.model = radio.value;
@@ -963,33 +650,25 @@
       });
     });
 
-    $$('input[name="dataModel"]').forEach(function (radio) {
-      radio.addEventListener("change", function () {
-        state.dataModel = radio.value;
-        renderGuides();
-      });
-    });
-
-    $("#downloadCsv").addEventListener("click", downloadCsv);
-
     $("#copyStructure").addEventListener("click", function () {
       var fold = state.nussinov;
       if (!fold || !fold.sequence.length) return;
       var text = ">fold_lab_result\n" + fold.sequence + "\n";
       if (state.model !== "zuker") text += state.nussinov.structure + "  (Nussinov, " + state.nussinov.pairs.length + " pairs)\n";
       if (state.model !== "nussinov") text += state.zuker.structure + "  (Zuker, " + state.zuker.energy.toFixed(1) + " kcal/mol)\n";
-
       var button = $("#copyStructure");
-      var done = function () {
-        button.textContent = "Copied";
-        setTimeout(function () {
-          button.textContent = "Copy";
-        }, 1400);
-      };
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(done, function () {
-          $("#foldInterpretation").textContent = text;
-        });
+        navigator.clipboard.writeText(text).then(
+          function () {
+            button.textContent = "Copied";
+            setTimeout(function () {
+              button.textContent = "Copy";
+            }, 1400);
+          },
+          function () {
+            $("#foldInterpretation").textContent = text;
+          }
+        );
       } else {
         $("#foldInterpretation").textContent = text;
       }
@@ -998,24 +677,39 @@
     $("#spinToggle").addEventListener("click", function () {
       this.textContent = viewer.toggleSpin() ? "Pause spin" : "Resume spin";
     });
-
     $("#resetView").addEventListener("click", function () {
       viewer.resetView();
       $("#spinToggle").textContent = "Pause spin";
     });
 
-    // Anchor nav: smooth-scroll with our own offset, and close the mobile menu.
+    $("#matrixCanvas").addEventListener("mousemove", function (event) {
+      var cells = state.matrixCells;
+      var hint = $("#matrixHover");
+      if (!cells) return;
+      var rect = this.getBoundingClientRect();
+      var j = Math.floor((event.clientX - rect.left - cells.ox) / cells.cell);
+      var i = Math.floor((event.clientY - rect.top - cells.oy) / cells.cell);
+      if (i < 0 || j < 0 || i >= cells.n || j >= cells.n || j < i) {
+        hint.textContent = "hover a cell";
+        return;
+      }
+      var v = cells.grid[i][j];
+      var label = cells.useZuker ? v.toFixed(1) + " kcal/mol" : v + " pairs";
+      hint.textContent =
+        "[" + (i + 1) + "," + (j + 1) + "] " + cells.seq.slice(i, j + 1).slice(0, 12) + (j - i > 11 ? "…" : "") + " = " + label;
+    });
+    $("#matrixCanvas").addEventListener("mouseleave", function () {
+      $("#matrixHover").textContent = "hover a cell";
+    });
+
     $$('a[href^="#"]').forEach(function (link) {
       link.addEventListener("click", function (event) {
         var id = link.getAttribute("href").slice(1);
         if (!id || !document.getElementById(id)) return;
         event.preventDefault();
         closeNav();
-        if (id === "top") {
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        } else {
-          scrollToSection(id);
-        }
+        if (id === "top") window.scrollTo({ top: 0, behavior: "smooth" });
+        else scrollToSection(id);
       });
     });
 
@@ -1025,16 +719,15 @@
     });
 
     /*
-     * Drive redraws from a ResizeObserver instead of measuring once at init.
-     * These canvases size themselves from their CSS box, and at startup that
-     * box can still be 0-wide (render-blocking webfont CSS), which pinned the
-     * backing store to 1px and left the chart blank until a window resize.
+     * Drive redraws from a ResizeObserver rather than measuring once at init.
+     * At startup the canvas box can still be 0 wide (render blocking webfont
+     * CSS), which pinned the backing store to 1px and left the hero blank until
+     * the user happened to resize the window.
      */
     if ("ResizeObserver" in window) {
       [
         ["#rnaCanvas", drawArcs],
-        ["#matrixCanvas", drawMatrix],
-        ["#guideChart", drawGuideChart]
+        ["#matrixCanvas", drawMatrix]
       ].forEach(function (entry) {
         var element = $(entry[0]);
         if (!element) return;
@@ -1046,13 +739,11 @@
 
     var resizeTimer = null;
     window.addEventListener("resize", function () {
-      // Backstop for devicePixelRatio changes, which leave the CSS box (and so
-      // the ResizeObserver) untouched.
+      // Backstop for devicePixelRatio changes, which leave the CSS box alone.
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(function () {
         drawArcs();
         drawMatrix();
-        drawGuideChart();
         if (viewer) viewer.draw();
       }, 140);
     });
@@ -1065,17 +756,13 @@
     bindEvents();
     initScrollSpy();
     renderStackTable();
-    loadGuides();
     runFold();
     observeReveal();
 
-    // Legacy deep links: the old site used #tool for the lab.
+    if (window.Chapters) window.Chapters.init();
     if (location.hash === "#tool") scrollToSection("lab");
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
 })();

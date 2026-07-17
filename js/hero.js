@@ -10,7 +10,7 @@
  * Reading as "DNA" depends almost entirely on two things: a chunky
  * diameter-to-length ratio, and clearly visible base-pair rungs. A long thin
  * spiral with faint rungs just reads as a squiggle. Hence the proportions
- * below — they are deliberately stockier than real B-DNA.
+ * below. They are deliberately stockier than real B-DNA.
  *
  * Respects prefers-reduced-motion (renders one static frame) and pauses when
  * the tab is hidden or the hero scrolls out of view.

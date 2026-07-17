@@ -10,7 +10,7 @@
  *   Zuker     minimizes FREE ENERGY (kcal/mol) using nearest-neighbour
  *             thermodynamics: stacking stabilizes, loops cost.
  *
- * PARAMETER PROVENANCE — read before quoting numbers in a report:
+ * PARAMETER PROVENANCE. Read this before quoting numbers in a report:
  *
  *   - Watson-Crick stacking energies are the published Turner/Xia nearest-
  *     neighbour values (Xia et al. 1998, Turner & Mathews 2010), in kcal/mol
@@ -197,7 +197,7 @@ window.RNA = (function () {
   /*
    * Linear multiloop model: a + b*branches + c*unpaired.
    *
-   * b is NEGATIVE — each extra branch is rewarded, not punished. That looks
+   * b is NEGATIVE, so each extra branch is rewarded, not punished. That looks
    * wrong but is the Turner 2004 convention, and it is load-bearing: with a
    * positive b the model nests tRNA's arms into a chain instead of opening the
    * four-way junction. At b = -0.9 the tRNA-Phe fold recovers the accepted

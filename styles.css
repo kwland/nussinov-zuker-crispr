@@ -1,5 +1,5 @@
 /* ==========================================================================
-   RNA Fold Lab — Nussinov · Zuker · CRISPR
+   RNA Fold Lab: Nussinov, Zuker, CRISPR
    Dark editorial layout: fixed side rails, full-bleed hero over the live RNA
    helix canvas, then numbered chapters with ghosted numerals.
    ========================================================================== */
@@ -457,7 +457,7 @@ main {
 }
 
 /* Oversized ghosted numeral, as in the reference. Sits behind the heading and
-   is decorative only — the real numbering lives in the right-hand rail. */
+   is decorative only. The real numbering lives in the right-hand rail. */
 .ghost-num {
   position: absolute;
   left: -18px;
@@ -493,7 +493,7 @@ main {
 
 /* No backdrop-filter here on purpose. Cards sit on a solid dark background, so
    a blur buys nothing visually, and a dozen blurred layers is a real cost on
-   low-end machines. The masthead keeps its blur — it actually overlaps content. */
+   low-end machines. The masthead keeps its blur, since it overlaps content. */
 .card {
   position: relative;
   background: var(--panel);
@@ -563,6 +563,17 @@ main {
   grid-template-columns: minmax(320px, 0.84fr) 1.16fr;
   gap: 18px;
   align-items: start;
+}
+
+/*
+ * Grid items default to min-width:auto, so a child that cannot wrap (the
+ * nowrap results tables, long dot-bracket strings) forces its column wider
+ * than the viewport and scrolls the whole page sideways. These children all
+ * scroll internally already, so let the column shrink instead.
+ */
+.lab-grid > *,
+.designer-grid > * {
+  min-width: 0;
 }
 
 .field-label {
@@ -846,13 +857,26 @@ main {
   overflow: hidden;
 }
 
-.arc-wrap {
-  height: 240px;
-}
-#rnaCanvas {
+/*
+ * Every canvas must be pinned to its wrapper's box.
+ *
+ * Without this a canvas takes its layout size from its backing store, so the
+ * draw code (which sets canvas.width from the measured box) grows the element,
+ * which re-fires the ResizeObserver, which draws bigger again. That runaway
+ * loop blew three canvases up to 33 million pixels a side before this rule
+ * existed. Style the wrapper's height; never let the canvas size itself.
+ */
+.arc-wrap canvas,
+.viewer-wrap canvas,
+.matrix-wrap canvas,
+.chart-wrap canvas {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.arc-wrap {
+  height: 240px;
 }
 
 .arc-legend {
@@ -951,9 +975,6 @@ main {
   height: 360px;
 }
 #viewerCanvas {
-  display: block;
-  width: 100%;
-  height: 100%;
   cursor: grab;
   touch-action: none;
 }
@@ -1006,12 +1027,6 @@ main {
   margin: 0 auto;
   width: 100%;
 }
-#matrixCanvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
 .matrix-hint {
   font-family: var(--mono);
   font-size: 10px;
@@ -1115,11 +1130,6 @@ main {
 }
 .chart-wrap {
   height: 300px;
-}
-#guideChart {
-  display: block;
-  width: 100%;
-  height: 100%;
 }
 
 .data-grid {
@@ -1241,6 +1251,181 @@ main {
 .guide-foot {
   margin-top: auto;
   padding-top: 4px;
+}
+
+/* ------------------------------------------------------- tables & designer */
+
+.designer-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.72fr) 1.28fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.table-wrap {
+  max-height: 460px;
+  overflow: auto;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.22);
+}
+.table-wrap.tall {
+  max-height: 520px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #121a21;
+  text-align: left;
+  font-weight: 400;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.data-table tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ink);
+}
+.data-table .mono {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+.data-table .num-strong {
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.table-empty {
+  padding: 26px 12px !important;
+  text-align: center;
+  color: var(--faint);
+  white-space: normal !important;
+}
+
+.flag-clean {
+  font-size: 11px;
+  color: var(--good);
+}
+.warn-tag.tiny,
+.chip.tiny {
+  font-size: 9.5px;
+  padding: 3px 8px;
+}
+
+.stat-hint {
+  display: block;
+  font-style: normal;
+  font-size: 9.5px;
+  color: var(--faint);
+  margin-top: 3px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.model-note-card {
+  margin-top: 18px;
+}
+
+/* ---------------------------------------------------------- check our work */
+
+.check-card .check-scroll {
+  overflow-x: auto;
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--line-2);
+  padding: 12px;
+  margin-top: 12px;
+}
+.check-row + .check-row {
+  margin-top: 11px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+.check-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 5px;
+}
+.check-row code {
+  display: block;
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  white-space: pre;
+  color: var(--ink);
+}
+.check-f1 {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+.check-f1.is-perfect {
+  color: var(--good);
+}
+.check-f1.is-poor {
+  color: var(--warn);
+}
+
+/* ------------------------------------------------------------------ learn */
+
+.learn-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+}
+.learn-step {
+  position: relative;
+  padding-left: 30px;
+}
+.learn-step .step-num {
+  position: absolute;
+  left: 22px;
+  top: 24px;
+  font-size: 1.5rem;
+  color: rgba(79, 216, 232, 0.35);
+}
+.learn-step h3 {
+  font-family: var(--display);
+  font-size: 1.35rem;
+  color: #fff;
+  margin: 0 0 10px 28px;
+}
+.learn-step p {
+  font-size: 0.92rem;
+  color: var(--muted);
+  margin-left: 28px;
+}
+.learn-step p + p {
+  margin-top: 10px;
+}
+.learn-step .tick-list {
+  margin-left: 28px;
+  margin-top: 10px;
+}
+.learn-step .tick-list strong {
+  color: #fff;
+  font-weight: 400;
 }
 
 /* ----------------------------------------------------------------- method */
@@ -1576,7 +1761,8 @@ footer {
   .rail-right {
     display: none;
   }
-  .lab-grid {
+  .lab-grid,
+  .designer-grid {
     grid-template-columns: 1fr;
   }
   .about-grid {

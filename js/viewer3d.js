@@ -202,7 +202,7 @@ window.Viewer3D = (function () {
       var h = Math.max(1, rect.height);
 
       // Assigning canvas.width reallocates the backing store and is far too
-      // expensive to do on every animation frame — only touch it on a resize.
+      // expensive to do on every animation frame, so only touch it on a resize.
       var wantW = Math.floor(w * ratio);
       var wantH = Math.floor(h * ratio);
       if (canvas.width !== wantW || canvas.height !== wantH) {
@@ -214,9 +214,9 @@ window.Viewer3D = (function () {
 
       if (!model) {
         ctx.fillStyle = "rgba(226, 238, 234, 0.45)";
-        ctx.font = "13px 'Inter', system-ui, sans-serif";
+        ctx.font = "13px 'Jost', system-ui, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("Fold a sequence to build the 3D model", w / 2, h / 2);
+        ctx.fillText("Type a strand to build the 3D model", w / 2, h / 2);
         return;
       }
 
@@ -300,7 +300,7 @@ window.Viewer3D = (function () {
 
           if (r > 6 && model.nodes.length <= 80) {
             ctx.fillStyle = "rgba(6, 20, 17, 0.85)";
-            ctx.font = "700 " + Math.round(7.5 * d) + "px 'Inter', system-ui, sans-serif";
+            ctx.font = "700 " + Math.round(7.5 * d) + "px 'Jost', system-ui, sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(node.base, pt.x, pt.y + 0.5);
