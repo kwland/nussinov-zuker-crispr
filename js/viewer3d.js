@@ -353,6 +353,14 @@ window.Viewer3D = (function () {
       { passive: false }
     );
 
+    // The spin loop re-measures every frame, but a paused viewer would keep a
+    // stale 1px backing store if it was first drawn before layout settled.
+    if ("ResizeObserver" in window) {
+      new ResizeObserver(function () {
+        draw();
+      }).observe(canvas);
+    }
+
     tick();
 
     return {

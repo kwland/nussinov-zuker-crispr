@@ -2,8 +2,12 @@
  * Fold Lab UI wiring.
  *
  * Everything runs client-side: RNA.nussinov / RNA.zuker do the science,
- * Viewer3D draws the structure, Hero draws the masthead helix, and this file
- * connects them to the DOM.
+ * Viewer3D draws the structure, Hero draws the helix behind the masthead, and
+ * this file connects them to the DOM.
+ *
+ * The page is one scrolling document with four chapters (no tab panels), so
+ * every canvas is always laid out and measurable. Navigation is anchor links
+ * plus a scroll-spy that lights the active chapter in the nav and side rail.
  */
 
 (function () {
@@ -16,10 +20,10 @@
     return Array.prototype.slice.call(document.querySelectorAll(sel));
   };
 
-  var MODEL_A = "#0e7c7b"; // Nussinov
-  var MODEL_B = "#8b2d6b"; // Zuker
+  var MODEL_A = "#4fd8e8"; // Nussinov
   var ARC_A = "#4fd8e8";
   var ARC_B = "#e85bb0";
+  var SEED = "#ffd166";
 
   var BASE_COLORS = { A: "#5ee6c5", U: "#ffb454", G: "#7aa2ff", C: "#ff6fa5" };
 
@@ -35,47 +39,55 @@
   var viewer = null;
   var foldTimer = null;
 
-  // ------------------------------------------------------------------ tabs
+  // ------------------------------------------------------------- navigation
 
-  function switchTab(name, options) {
-    options = options || {};
-    if (!document.querySelector('[data-tab-panel="' + name + '"]')) name = "lab";
+  function scrollToSection(id) {
+    var target = document.getElementById(id);
+    if (!target) return;
+    var top = target.getBoundingClientRect().top + window.pageYOffset - 76;
+    window.scrollTo({ top: top, behavior: "smooth" });
+  }
 
-    $$("[data-tab]").forEach(function (button) {
-      var active = button.dataset.tab === name;
-      button.classList.toggle("is-active", active);
-      button.setAttribute("aria-selected", String(active));
+  function setActiveNav(id) {
+    $$("[data-nav]").forEach(function (link) {
+      link.classList.toggle("is-active", link.dataset.nav === id);
     });
+  }
 
-    $$("[data-tab-panel]").forEach(function (panel) {
-      var active = panel.dataset.tabPanel === name;
-      panel.classList.toggle("is-active", active);
-      panel.hidden = !active;
-    });
+  function initScrollSpy() {
+    var sections = ["lab", "data", "method", "about"]
+      .map(function (id) {
+        return document.getElementById(id);
+      })
+      .filter(Boolean);
 
-    if (options.updateHash !== false) {
-      history.replaceState(null, "", "#" + name);
+    function update() {
+      var masthead = $(".masthead");
+      masthead.classList.toggle("is-stuck", window.pageYOffset > 40);
+
+      // Active chapter = the last one whose top has passed the reading line.
+      var line = window.innerHeight * 0.35;
+      var current = null;
+      for (var i = 0; i < sections.length; i++) {
+        if (sections[i].getBoundingClientRect().top <= line) current = sections[i].id;
+      }
+      setActiveNav(current);
     }
 
-    closeNav();
-
-    // Canvases inside a display:none panel measure as 0, so redraw on reveal.
-    if (name === "lab") {
-      requestAnimationFrame(function () {
-        renderAll();
-        if (options.focusInput) $("#sequenceInput").focus();
-      });
-    } else if (name === "data") {
-      requestAnimationFrame(function () {
-        drawGuideChart();
-      });
-    }
-
-    if (options.scroll) {
-      var main = document.querySelector("main");
-      var top = main.getBoundingClientRect().top + window.pageYOffset - 68;
-      window.scrollTo({ top: top, behavior: "smooth" });
-    }
+    var ticking = false;
+    window.addEventListener(
+      "scroll",
+      function () {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function () {
+          update();
+          ticking = false;
+        });
+      },
+      { passive: true }
+    );
+    update();
   }
 
   function closeNav() {
@@ -85,16 +97,12 @@
 
   // ------------------------------------------------------------- folding
 
-  function currentSequence() {
-    return $("#sequenceInput").value;
-  }
-
   function runFold() {
     var error = $("#errorText");
     var status = $("#inputStatus");
     error.textContent = "";
 
-    var raw = currentSequence();
+    var raw = $("#sequenceInput").value;
     var minLoop = Number($("#loopLength").value);
     var wobble = $("#allowWobble").checked;
 
@@ -180,19 +188,25 @@
       status.classList.remove("is-warn");
       return;
     }
+    var list = $("#warningList");
+    list.innerHTML = "";
+
+    // Warnings are guide-design rules, so they only mean something for a 20 nt
+    // spacer. Suppress them everywhere at once — otherwise the pill counts
+    // warnings the panel below says do not apply.
+    if (seq.length !== 20) {
+      status.textContent = "ready";
+      status.classList.remove("is-warn");
+      list.innerHTML = '<span class="warn-tag ok">Guide-design checks apply to 20 nt spacers</span>';
+      return;
+    }
+
     var scored = RNA.scoreGuide(seq, state.model === "zuker" ? "zuker" : "nussinov");
     status.textContent = scored.warnings.length
       ? scored.warnings.length + " warning" + (scored.warnings.length > 1 ? "s" : "")
       : "ready";
     status.classList.toggle("is-warn", scored.warnings.length > 0);
 
-    var list = $("#warningList");
-    list.innerHTML = "";
-    if (seq.length !== 20) {
-      // Warnings are guide-design rules; they only mean something for a spacer.
-      list.innerHTML = '<span class="warn-tag ok">Guide-design checks apply to 20 nt spacers</span>';
-      return;
-    }
     if (!scored.warnings.length) {
       list.innerHTML = '<span class="warn-tag ok">No design warnings</span>';
     } else {
@@ -224,16 +238,13 @@
     }
 
     var parts = [];
-    if (state.model !== "zuker") {
-      parts.push("Nussinov finds " + n.pairs.length + " base pairs");
-    }
+    if (state.model !== "zuker") parts.push("Nussinov finds " + n.pairs.length + " base pairs");
     if (state.model !== "nussinov") {
       parts.push("Zuker settles at " + z.energy.toFixed(1) + " kcal/mol with " + z.pairs.length + " pairs");
     }
     parts.push(RNA.gcPercent(n.sequence).toFixed(0) + "% GC");
 
     var text = parts.join(" · ") + ".";
-
     if (state.model === "both" && z.pairs.length < n.pairs.length) {
       text +=
         " Zuker predicts fewer pairs because energy-based folding will not pay the loop cost for pairs that do not stack — Nussinov counts them anyway.";
@@ -260,7 +271,7 @@
       stat("Shared pairs", cmp.shared),
       stat("Nussinov only", cmp.onlyA),
       stat("Zuker only", cmp.onlyB),
-      stat("Zuker MFE", z.energy.toFixed(1) + " kcal/mol")
+      stat("Zuker MFE", z.energy.toFixed(1))
     ].join("");
 
     var note;
@@ -295,8 +306,12 @@
     var rect = canvas.getBoundingClientRect();
     var w = Math.max(1, rect.width);
     var h = Math.max(1, rect.height);
-    canvas.width = Math.floor(w * ratio);
-    canvas.height = Math.floor(h * ratio);
+    var wantW = Math.floor(w * ratio);
+    var wantH = Math.floor(h * ratio);
+    if (canvas.width !== wantW || canvas.height !== wantH) {
+      canvas.width = wantW;
+      canvas.height = wantH;
+    }
     var ctx = canvas.getContext("2d");
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx.clearRect(0, 0, w, h);
@@ -330,14 +345,11 @@
 
     function arc(pairs, color, up, limit) {
       ctx.strokeStyle = color;
-      ctx.lineWidth = n > 90 ? 1.1 : 1.8;
+      ctx.lineWidth = n > 90 ? 1 : 1.5;
       for (var p = 0; p < pairs.length; p++) {
-        var i = pairs[p][0];
-        var j = pairs[p][1];
-        var x1 = xOf(i);
-        var x2 = xOf(j);
-        var width = x2 - x1;
-        var height = Math.min(limit, 14 + width * 0.42);
+        var x1 = xOf(pairs[p][0]);
+        var x2 = xOf(pairs[p][1]);
+        var height = Math.min(limit, 14 + (x2 - x1) * 0.42);
         var dir = up ? -1 : 1;
         ctx.beginPath();
         ctx.moveTo(x1, baseline + dir * 6);
@@ -355,16 +367,15 @@
       arc(state.zuker.pairs, ARC_B, false, maxDown);
     }
 
-    // backbone
-    ctx.strokeStyle = "rgba(150, 214, 198, 0.3)";
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = "rgba(160, 190, 205, 0.22)";
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(xOf(0), baseline);
     ctx.lineTo(xOf(n - 1), baseline);
     ctx.stroke();
 
     var seedStart = n >= RNA.SEED_LENGTH ? n - RNA.SEED_LENGTH : n;
-    var r = n > 90 ? 2.2 : n > 40 ? 4 : 6.5;
+    var r = n > 90 ? 2.2 : n > 40 ? 3.8 : 6.2;
 
     for (var i = 0; i < n; i++) {
       var x = xOf(i);
@@ -374,16 +385,16 @@
       ctx.fill();
 
       if (i >= seedStart) {
-        ctx.strokeStyle = "#ffd666";
-        ctx.lineWidth = 1.4;
+        ctx.strokeStyle = SEED;
+        ctx.lineWidth = 1.3;
         ctx.beginPath();
         ctx.arc(x, baseline, r + 2, 0, Math.PI * 2);
         ctx.stroke();
       }
 
       if (r >= 6) {
-        ctx.fillStyle = "#06100f";
-        ctx.font = "700 8px 'Inter', system-ui, sans-serif";
+        ctx.fillStyle = "#080e13";
+        ctx.font = "700 8px 'Jost', system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(seq[i], x, baseline + 0.5);
@@ -398,7 +409,7 @@
       items.push('<span><i class="swatch" style="background:' + ARC_B + '"></i>Zuker' + (both ? " (below)" : "") + "</span>");
     }
     if (n >= RNA.SEED_LENGTH) {
-      items.push('<span><i class="swatch" style="background:#ffd666"></i>seed (last 8 nt)</span>');
+      items.push('<span><i class="swatch" style="background:' + SEED + '"></i>seed (last 8 nt)</span>');
     }
     legend.innerHTML = items.join("");
   }
@@ -444,18 +455,17 @@
         var x = ox + j * cell;
         var y = oy + i * cell;
         if (j < i) {
-          ctx.fillStyle = "#061715";
+          ctx.fillStyle = "#080e13";
         } else {
           var v = useZuker ? -grid[i][j] : grid[i][j];
-          var t = Math.max(0, Math.min(1, v / best));
-          ctx.fillStyle = ramp(t);
+          ctx.fillStyle = ramp(Math.max(0, Math.min(1, v / best)));
         }
         ctx.fillRect(x, y, Math.ceil(cell), Math.ceil(cell));
       }
     }
 
     if (n <= 60) {
-      ctx.strokeStyle = "rgba(196, 216, 202, 0.08)";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
       ctx.lineWidth = 0.5;
       for (var k = 0; k <= n; k++) {
         var p = k * cell;
@@ -469,49 +479,33 @@
     }
 
     // The whole-molecule answer lives in the top-right corner.
-    ctx.strokeStyle = "#ffd666";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = SEED;
+    ctx.lineWidth = 1.6;
     ctx.strokeRect(ox + (n - 1) * cell, oy, cell, cell);
 
     state.matrixCells = { n: n, cell: cell, ox: ox, oy: oy, grid: grid, useZuker: useZuker, seq: fold.sequence };
   }
 
   function ramp(t) {
-    // dark teal -> mid teal -> cyan
     var stops = [
-      [11, 31, 27],
-      [20, 107, 98],
+      [12, 20, 27],
+      [29, 111, 124],
       [79, 216, 232]
     ];
     var seg = t < 0.5 ? 0 : 1;
     var local = t < 0.5 ? t / 0.5 : (t - 0.5) / 0.5;
     var from = stops[seg];
     var to = stops[seg + 1];
-    var r = Math.round(from[0] + (to[0] - from[0]) * local);
-    var g = Math.round(from[1] + (to[1] - from[1]) * local);
-    var b = Math.round(from[2] + (to[2] - from[2]) * local);
-    return "rgb(" + r + "," + g + "," + b + ")";
+    return (
+      "rgb(" +
+      Math.round(from[0] + (to[0] - from[0]) * local) +
+      "," +
+      Math.round(from[1] + (to[1] - from[1]) * local) +
+      "," +
+      Math.round(from[2] + (to[2] - from[2]) * local) +
+      ")"
+    );
   }
-
-  $("#matrixCanvas").addEventListener("mousemove", function (event) {
-    var cells = state.matrixCells;
-    var hint = $("#matrixHover");
-    if (!cells) return;
-    var rect = this.getBoundingClientRect();
-    var j = Math.floor((event.clientX - rect.left - cells.ox) / cells.cell);
-    var i = Math.floor((event.clientY - rect.top - cells.oy) / cells.cell);
-    if (i < 0 || j < 0 || i >= cells.n || j >= cells.n || j < i) {
-      hint.textContent = "hover a cell";
-      return;
-    }
-    var v = cells.grid[i][j];
-    var label = cells.useZuker ? v.toFixed(1) + " kcal/mol" : v + " pairs";
-    hint.textContent = "[" + (i + 1) + "," + (j + 1) + "] " + cells.seq.slice(i, j + 1).slice(0, 12) + (j - i > 11 ? "…" : "") + " = " + label;
-  });
-
-  $("#matrixCanvas").addEventListener("mouseleave", function () {
-    $("#matrixHover").textContent = "hover a cell";
-  });
 
   // ---------------------------------------------------------------- viewer
 
@@ -670,7 +664,7 @@
       button.addEventListener("click", function () {
         $("#sequenceInput").value = button.dataset.loadGuide;
         runFold();
-        switchTab("lab", { scroll: true });
+        scrollToSection("lab");
       });
     });
   }
@@ -688,68 +682,66 @@
 
     var rows = ready.map(function (g) {
       var s = RNA.scoreGuide(g.spacer, state.dataModel);
-      return { name: g.name, group: g.group, seed: s.seedAccessibility, self: Math.min(1, s.selfPairFraction) };
+      return { name: g.name, seed: s.seedAccessibility, self: Math.min(1, s.selfPairFraction) };
     });
 
-    var padL = 148;
-    var padR = 60;
-    var padT = 26;
+    var padL = Math.min(150, env.w * 0.3);
+    var padR = 54;
+    var padT = 28;
     var padB = 30;
     var plotW = env.w - padL - padR;
     var rowH = (env.h - padT - padB) / rows.length;
 
-    // gridlines at 0/25/50/75/100%
-    ctx.font = "10px 'Inter', system-ui, sans-serif";
+    ctx.font = "10px 'Jost', system-ui, sans-serif";
     ctx.textBaseline = "middle";
     for (var t = 0; t <= 4; t++) {
       var x = padL + (plotW * t) / 4;
-      ctx.strokeStyle = "rgba(150, 214, 198, 0.14)";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(x, padT - 6);
       ctx.lineTo(x, env.h - padB + 4);
       ctx.stroke();
-      ctx.fillStyle = "rgba(183, 210, 203, 0.55)";
+      ctx.fillStyle = "rgba(147, 164, 177, 0.6)";
       ctx.textAlign = "center";
       ctx.fillText(t * 25 + "%", x, env.h - padB + 14);
     }
 
     rows.forEach(function (row, index) {
       var y = padT + rowH * index;
-      var barH = Math.min(11, rowH * 0.3);
-      var gap = 4;
+      var barH = Math.min(9, rowH * 0.26);
+      var gap = 5;
 
-      ctx.fillStyle = "rgba(226, 238, 234, 0.82)";
-      ctx.font = "600 10.5px 'Inter', system-ui, sans-serif";
+      ctx.fillStyle = "rgba(238, 243, 247, 0.8)";
+      ctx.font = "10.5px 'Jost', system-ui, sans-serif";
       ctx.textAlign = "right";
       ctx.fillText(truncate(row.name, 22), padL - 12, y + rowH / 2 - 1);
 
       var yA = y + rowH / 2 - barH - gap / 2;
       var yB = y + rowH / 2 + gap / 2;
 
-      ctx.fillStyle = "#4fd8e8";
+      ctx.fillStyle = ARC_A;
       ctx.fillRect(padL, yA, Math.max(1, plotW * row.seed), barH);
-      ctx.fillStyle = "#e85bb0";
+      ctx.fillStyle = ARC_B;
       ctx.fillRect(padL, yB, Math.max(1, plotW * row.self), barH);
 
-      ctx.fillStyle = "rgba(226, 238, 234, 0.7)";
-      ctx.font = "10px 'Inter', system-ui, sans-serif";
+      ctx.fillStyle = "rgba(147, 164, 177, 0.8)";
+      ctx.font = "10px 'Jost', system-ui, sans-serif";
       ctx.textAlign = "left";
-      ctx.fillText(Math.round(row.seed * 100) + "%", padL + plotW * row.seed + 6, yA + barH / 2);
-      ctx.fillText(Math.round(row.self * 100) + "%", padL + plotW * row.self + 6, yB + barH / 2);
+      ctx.fillText(Math.round(row.seed * 100) + "%", padL + plotW * row.seed + 7, yA + barH / 2);
+      ctx.fillText(Math.round(row.self * 100) + "%", padL + plotW * row.self + 7, yB + barH / 2);
     });
 
-    // legend
     ctx.textAlign = "left";
-    ctx.font = "10px 'Inter', system-ui, sans-serif";
-    ctx.fillStyle = "#4fd8e8";
-    ctx.fillRect(padL, 8, 14, 4);
-    ctx.fillStyle = "rgba(226, 238, 234, 0.7)";
-    ctx.fillText("seed accessibility", padL + 20, 10);
-    ctx.fillStyle = "#e85bb0";
-    ctx.fillRect(padL + 130, 8, 14, 4);
-    ctx.fillStyle = "rgba(226, 238, 234, 0.7)";
-    ctx.fillText("self-pairing", padL + 150, 10);
+    ctx.font = "10px 'Jost', system-ui, sans-serif";
+    ctx.fillStyle = ARC_A;
+    ctx.fillRect(padL, 9, 12, 3);
+    ctx.fillStyle = "rgba(147, 164, 177, 0.8)";
+    ctx.fillText("seed accessibility", padL + 18, 10);
+    ctx.fillStyle = ARC_B;
+    ctx.fillRect(padL + 126, 9, 12, 3);
+    ctx.fillStyle = "rgba(147, 164, 177, 0.8)";
+    ctx.fillText("self-pairing", padL + 144, 10);
   }
 
   function truncate(text, max) {
@@ -776,9 +768,7 @@
 
     state.guides.forEach(function (g) {
       if (g.spacer.indexOf("REPLACE_WITH") !== -1) {
-        lines.push(
-          [g.name, g.group, g.spacer, state.dataModel, "", "", "", "", "", "", "", "", "needs_sequence"].map(csvCell).join(",")
-        );
+        lines.push([g.name, g.group, g.spacer, state.dataModel, "", "", "", "", "", "", "", "", "needs_sequence"].map(csvCell).join(","));
         return;
       }
       var s = RNA.scoreGuide(g.spacer, state.dataModel);
@@ -823,16 +813,16 @@
 
   function renderStackTable() {
     var rows = [
-      ["A", "U", "A", "U", "AA/UU"],
-      ["A", "U", "U", "A", "AU/UA"],
-      ["U", "A", "A", "U", "UA/AU"],
-      ["C", "G", "U", "A", "CU/GA"],
-      ["C", "G", "A", "U", "CA/GU"],
-      ["G", "C", "U", "A", "GU/CA"],
-      ["G", "C", "A", "U", "GA/CU"],
-      ["C", "G", "G", "C", "CG/GC"],
-      ["G", "C", "G", "C", "GG/CC"],
-      ["G", "C", "C", "G", "GC/CG"]
+      ["A", "U", "A", "U"],
+      ["A", "U", "U", "A"],
+      ["U", "A", "A", "U"],
+      ["C", "G", "U", "A"],
+      ["C", "G", "A", "U"],
+      ["G", "C", "U", "A"],
+      ["G", "C", "A", "U"],
+      ["C", "G", "G", "C"],
+      ["G", "C", "G", "C"],
+      ["G", "C", "C", "G"]
     ];
 
     var values = rows.map(function (r) {
@@ -843,17 +833,17 @@
     $("#stackTable").innerHTML = rows
       .map(function (r, index) {
         var energy = values[index];
-        var strength = energy / min; // 0..1, 1 = most stabilizing
+        var strength = energy / min; // 1 = most stabilizing
         var duplex = "5'-" + r[0] + r[2] + "-3'\n3'-" + r[1] + r[3] + "-5'";
         return (
-          '<div class="stack-cell" style="background: rgba(14, 124, 123, ' +
-          (0.05 + strength * 0.16).toFixed(3) +
+          '<div class="stack-cell" style="background: rgba(79, 216, 232, ' +
+          (0.03 + strength * 0.12).toFixed(3) +
           ')">' +
           '<div class="stack-duplex">' +
           duplex +
           "</div>" +
           '<div class="stack-energy" style="color: ' +
-          (strength > 0.75 ? MODEL_A : "var(--ink)") +
+          (strength > 0.75 ? MODEL_A : "#fff") +
           '">' +
           energy.toFixed(2) +
           "</div>" +
@@ -866,10 +856,8 @@
   // ---------------------------------------------------------------- reveal
 
   function observeReveal() {
-    var targets = $$(
-      ".card:not(.reveal), .guide-card:not(.reveal), .summary-stat:not(.reveal)"
-    );
     if (!("IntersectionObserver" in window)) return;
+    var targets = $$(".card:not(.reveal), .guide-card:not(.reveal), .summary-stat:not(.reveal)");
     var observer = new IntersectionObserver(
       function (entries) {
         entries.forEach(function (entry) {
@@ -879,7 +867,7 @@
           }
         });
       },
-      { threshold: 0.08 }
+      { threshold: 0.06 }
     );
     targets.forEach(function (element) {
       element.classList.add("reveal");
@@ -991,8 +979,8 @@
       if (state.model !== "zuker") text += state.nussinov.structure + "  (Nussinov, " + state.nussinov.pairs.length + " pairs)\n";
       if (state.model !== "nussinov") text += state.zuker.structure + "  (Zuker, " + state.zuker.energy.toFixed(1) + " kcal/mol)\n";
 
+      var button = $("#copyStructure");
       var done = function () {
-        var button = $("#copyStructure");
         button.textContent = "Copied";
         setTimeout(function () {
           button.textContent = "Copy";
@@ -1008,8 +996,7 @@
     });
 
     $("#spinToggle").addEventListener("click", function () {
-      var spinning = viewer.toggleSpin();
-      this.textContent = spinning ? "Pause spin" : "Resume spin";
+      this.textContent = viewer.toggleSpin() ? "Pause spin" : "Resume spin";
     });
 
     $("#resetView").addEventListener("click", function () {
@@ -1017,34 +1004,50 @@
       $("#spinToggle").textContent = "Pause spin";
     });
 
-    $$("[data-tab]").forEach(function (button) {
-      button.addEventListener("click", function () {
-        switchTab(button.dataset.tab, { scroll: true });
-      });
-    });
-
-    $$("[data-tab-link]").forEach(function (element) {
-      element.addEventListener("click", function (event) {
+    // Anchor nav: smooth-scroll with our own offset, and close the mobile menu.
+    $$('a[href^="#"]').forEach(function (link) {
+      link.addEventListener("click", function (event) {
+        var id = link.getAttribute("href").slice(1);
+        if (!id || !document.getElementById(id)) return;
         event.preventDefault();
-        switchTab(element.dataset.tabLink, {
-          scroll: true,
-          focusInput: element.dataset.focusInput === "true"
-        });
+        closeNav();
+        if (id === "top") {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        } else {
+          scrollToSection(id);
+        }
       });
     });
 
     $(".nav-toggle").addEventListener("click", function () {
-      var nav = $(".mainnav");
-      var open = nav.classList.toggle("is-open");
+      var open = $(".mainnav").classList.toggle("is-open");
       this.setAttribute("aria-expanded", String(open));
     });
 
-    window.addEventListener("hashchange", function () {
-      switchTab(location.hash.replace("#", "") || "lab", { updateHash: false });
-    });
+    /*
+     * Drive redraws from a ResizeObserver instead of measuring once at init.
+     * These canvases size themselves from their CSS box, and at startup that
+     * box can still be 0-wide (render-blocking webfont CSS), which pinned the
+     * backing store to 1px and left the chart blank until a window resize.
+     */
+    if ("ResizeObserver" in window) {
+      [
+        ["#rnaCanvas", drawArcs],
+        ["#matrixCanvas", drawMatrix],
+        ["#guideChart", drawGuideChart]
+      ].forEach(function (entry) {
+        var element = $(entry[0]);
+        if (!element) return;
+        new ResizeObserver(function () {
+          entry[1]();
+        }).observe(element);
+      });
+    }
 
     var resizeTimer = null;
     window.addEventListener("resize", function () {
+      // Backstop for devicePixelRatio changes, which leave the CSS box (and so
+      // the ResizeObserver) untouched.
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(function () {
         drawArcs();
@@ -1060,16 +1063,14 @@
     viewer = Viewer3D.create($("#viewerCanvas"));
 
     bindEvents();
+    initScrollSpy();
     renderStackTable();
     loadGuides();
-
-    // Legacy deep links: the old site used #tool for the lab.
-    var hash = location.hash.replace("#", "");
-    if (hash === "tool") hash = "lab";
-    switchTab(hash || "lab", { updateHash: false });
-
     runFold();
     observeReveal();
+
+    // Legacy deep links: the old site used #tool for the lab.
+    if (location.hash === "#tool") scrollToSection("lab");
   }
 
   if (document.readyState === "loading") {

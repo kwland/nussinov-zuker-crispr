@@ -8,15 +8,15 @@
       name="description"
       content="Interactive Nussinov and Zuker RNA secondary-structure folding, with a 3D structure viewer and CRISPR guide RNA seed-accessibility analysis."
     />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="dark" />
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1f1c'/%3E%3Cpath d='M20 12c0 10 24 14 24 24S20 50 20 52' stroke='%234fd8e8' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3Cpath d='M44 12c0 10-24 14-24 24s24 14 24 16' stroke='%23e85bb0' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1218'/%3E%3Cpath d='M20 12c0 10 24 14 24 24S20 50 20 52' stroke='%234fd8e8' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3Cpath d='M44 12c0 10-24 14-24 24s24 14 24 16' stroke='%23e85bb0' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Jost:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
@@ -24,26 +24,19 @@
   <body>
     <a class="skip-link" href="#lab">Skip to the Fold Lab</a>
 
-    <div class="utility-bar">
-      <div class="wrap utility-inner">
-        <span class="utility-note">Computational Biology Final Project · Nussinov · Zuker · CRISPR</span>
-        <div class="utility-links">
-          <span class="utility-team">Yu · Tan · Zhang · Lambert</span>
-          <a href="https://github.com/kwland/nussinov-zuker-crispr" rel="noopener">Source on GitHub</a>
-        </div>
-      </div>
-    </div>
+    <!-- fixed page gradient wash -->
+    <div class="page-wash" aria-hidden="true"></div>
 
     <header class="masthead">
-      <div class="wrap masthead-inner">
-        <a class="brand" href="#lab" data-tab-link="lab">
+      <div class="shell masthead-inner">
+        <a class="brand" href="#top">
           <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32" width="30" height="30">
-              <path d="M9 4c0 6 14 8 14 12S9 22 9 28" stroke="#4fd8e8" stroke-width="2.4" fill="none" stroke-linecap="round" />
-              <path d="M23 4c0 6-14 8-14 12s14 8 14 12" stroke="#e85bb0" stroke-width="2.4" fill="none" stroke-linecap="round" />
+            <svg viewBox="0 0 32 32" width="26" height="26">
+              <path d="M9 4c0 6 14 8 14 12S9 22 9 28" stroke="#4fd8e8" stroke-width="2.2" fill="none" stroke-linecap="round" />
+              <path d="M23 4c0 6-14 8-14 12s14 8 14 12" stroke="#e85bb0" stroke-width="2.2" fill="none" stroke-linecap="round" />
             </svg>
           </span>
-          <span class="brand-text">RNA Fold Lab</span>
+          <span class="brand-text">RNA<em>Fold</em></span>
         </a>
 
         <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mainnav">
@@ -51,62 +44,71 @@
           <span class="nav-toggle-bar" aria-hidden="true"></span>
         </button>
 
-        <nav class="mainnav" id="mainnav" aria-label="Project sections">
-          <div class="tablist" role="tablist">
-            <button class="tab-button is-active" type="button" role="tab" aria-selected="true" data-tab="lab" id="tab-lab" aria-controls="lab">
-              Fold Lab
-            </button>
-            <button class="tab-button" type="button" role="tab" aria-selected="false" data-tab="data" id="tab-data" aria-controls="data">
-              Guide Data
-            </button>
-            <button class="tab-button" type="button" role="tab" aria-selected="false" data-tab="method" id="tab-method" aria-controls="method">
-              Method
-            </button>
-            <button class="tab-button" type="button" role="tab" aria-selected="false" data-tab="about" id="tab-about" aria-controls="about">
-              About
-            </button>
-          </div>
-          <button class="cta-pill" type="button" data-tab-link="lab" data-focus-input="true">Fold a sequence</button>
+        <nav class="mainnav" id="mainnav" aria-label="Sections">
+          <a class="navlink" href="#lab" data-nav="lab">Fold Lab</a>
+          <a class="navlink" href="#data" data-nav="data">Guide Data</a>
+          <a class="navlink" href="#method" data-nav="method">Method</a>
+          <a class="navlink" href="#about" data-nav="about">About</a>
+          <a class="nav-cta" href="https://github.com/kwland/nussinov-zuker-crispr" rel="noopener">GitHub</a>
         </nav>
       </div>
     </header>
 
-    <section class="hero">
+    <!-- left rail -->
+    <div class="rail rail-left" aria-hidden="true">
+      <span class="rail-word">Nussinov · Zuker</span>
+      <span class="rail-line"></span>
+    </div>
+
+    <!-- right chapter rail -->
+    <nav class="rail rail-right" aria-label="Chapters">
+      <span class="rail-start">Start</span>
+      <a class="chapter-dot is-active" href="#lab" data-nav="lab"><span>01</span></a>
+      <a class="chapter-dot" href="#data" data-nav="data"><span>02</span></a>
+      <a class="chapter-dot" href="#method" data-nav="method"><span>03</span></a>
+      <a class="chapter-dot" href="#about" data-nav="about"><span>04</span></a>
+    </nav>
+
+    <!-- ================================================== HERO -->
+    <section class="hero" id="top">
       <canvas id="heroCanvas" aria-hidden="true"></canvas>
       <div class="hero-veil" aria-hidden="true"></div>
-      <div class="wrap hero-content">
-        <h1 class="hero-title">
-          <span class="hero-line-a">RNA Folding</span>
-          <span class="hero-line-b">for CRISPR</span>
-        </h1>
-        <p class="hero-sub">Nussinov &amp; Zuker dynamic programming · Guide RNA seed accessibility</p>
-        <div class="hero-actions">
-          <button class="btn btn-solid" type="button" data-tab-link="lab" data-focus-input="true">Fold a sequence</button>
-          <button class="btn btn-hollow" type="button" data-tab-link="data">View guide data</button>
-        </div>
+
+      <div class="shell hero-content">
+        <p class="eyebrow"><span class="eyebrow-dash" aria-hidden="true"></span>A computational biology guide</p>
+        <h1 class="hero-title">Fold The Guide<br />Before You Cut</h1>
+        <p class="hero-sub">
+          Nussinov counts base pairs. Zuker minimizes free energy. Fold any RNA with both, in your
+          browser, and watch where they disagree.
+        </p>
+        <a class="scroll-cue" href="#lab">
+          <span>scroll down</span>
+          <span class="scroll-arrow" aria-hidden="true"></span>
+        </a>
       </div>
-      <div class="hero-curve" aria-hidden="true"></div>
     </section>
 
     <main>
-      <!-- ================================================== FOLD LAB -->
-      <section class="panel is-active" id="lab" data-tab-panel="lab" role="tabpanel" aria-labelledby="tab-lab">
-        <div class="wrap">
-          <div class="section-head">
-            <p class="eyebrow">Interactive tool</p>
-            <h2>Fold Lab</h2>
-            <p class="section-lead">
-              Both algorithms run in your browser — nothing is uploaded. Nussinov maximizes base-pair
-              count; Zuker minimizes free energy. Fold the same sequence with each and see where they
-              disagree.
-            </p>
+      <!-- ================================================== 01 FOLD LAB -->
+      <section class="chapter" id="lab">
+        <div class="shell">
+          <div class="chapter-head">
+            <span class="ghost-num" aria-hidden="true">01</span>
+            <div class="chapter-intro">
+              <p class="eyebrow"><span class="eyebrow-dash" aria-hidden="true"></span>Get started</p>
+              <h2>What does your guide<br />actually fold into?</h2>
+              <p class="lead">
+                Both algorithms run here, on your machine — nothing is uploaded. Type a sequence, pick a
+                model, and read the structure straight out of the dynamic-programming table.
+              </p>
+            </div>
           </div>
 
           <div class="lab-grid">
             <form class="card input-card" id="foldForm">
               <div class="card-head">
                 <div>
-                  <p class="eyebrow">Input</p>
+                  <p class="kicker">Input</p>
                   <h3>Sequence</h3>
                 </div>
                 <span class="status-pill" id="inputStatus">ready</span>
@@ -158,7 +160,7 @@
             <div class="card result-card">
               <div class="card-head">
                 <div>
-                  <p class="eyebrow">Output</p>
+                  <p class="kicker">Output</p>
                   <h3>Predicted fold</h3>
                 </div>
                 <button class="btn btn-ghost btn-sm" type="button" id="copyStructure">Copy</button>
@@ -214,7 +216,7 @@
             <div class="card matrix-card">
               <div class="card-head">
                 <div>
-                  <p class="eyebrow">Dynamic programming</p>
+                  <p class="kicker">Dynamic programming</p>
                   <h3 id="matrixTitle">Nussinov score matrix</h3>
                 </div>
                 <span class="matrix-hint" id="matrixHover">hover a cell</span>
@@ -227,16 +229,16 @@
                 <span class="legend-ramp" aria-hidden="true"></span>
                 <span>more pairs</span>
               </div>
-              <p class="viewer-note">
+              <p class="note">
                 Cell (i, j) holds the best score for the subsequence from i to j. The answer for the whole
-                molecule is the top-right corner — every other cell is a subproblem it was built from.
+                molecule is the gold corner — every other cell is a subproblem it was built from.
               </p>
             </div>
 
             <div class="card viewer-card">
               <div class="card-head">
                 <div>
-                  <p class="eyebrow">3D model</p>
+                  <p class="kicker">3D model</p>
                   <h3>Structure viewer</h3>
                 </div>
                 <div class="viewer-controls">
@@ -255,9 +257,9 @@
                 <span><i style="background:#ff6fa5"></i>C</span>
                 <span class="legend-seed"><i></i>seed (last 8 nt)</span>
               </div>
-              <p class="viewer-note">
-                Schematic layout of the predicted secondary structure, relaxed in 3D. Shows which stems
-                and loops the model predicts — not an atomic tertiary structure.
+              <p class="note">
+                Schematic layout of the predicted secondary structure, relaxed in 3D. Shows which stems and
+                loops the model predicts — not an atomic tertiary structure.
               </p>
             </div>
           </div>
@@ -265,27 +267,30 @@
           <div class="card compare-card" id="compareCard">
             <div class="card-head">
               <div>
-                <p class="eyebrow">Model comparison</p>
+                <p class="kicker">Model comparison</p>
                 <h3>Where Nussinov and Zuker disagree</h3>
               </div>
               <span class="status-pill" id="agreementPill">—</span>
             </div>
             <div class="compare-stats" id="compareStats"></div>
-            <p class="viewer-note" id="compareNote"></p>
+            <p class="note" id="compareNote"></p>
           </div>
         </div>
       </section>
 
-      <!-- ================================================== GUIDE DATA -->
-      <section class="panel band" id="data" data-tab-panel="data" role="tabpanel" aria-labelledby="tab-data" hidden>
-        <div class="wrap">
-          <div class="section-head">
-            <p class="eyebrow">Algorithm application</p>
-            <h2>Guide RNA comparison set</h2>
-            <p class="section-lead">
-              A compact control scaffold: known guides, length-matched random controls, and deliberately
-              bad controls. Every card is folded with the same code running in the Fold Lab.
-            </p>
+      <!-- ================================================== 02 GUIDE DATA -->
+      <section class="chapter" id="data">
+        <div class="shell">
+          <div class="chapter-head">
+            <span class="ghost-num" aria-hidden="true">02</span>
+            <div class="chapter-intro">
+              <p class="eyebrow"><span class="eyebrow-dash" aria-hidden="true"></span>Guide essentials</p>
+              <h2>Known guides, random<br />controls, bad controls</h2>
+              <p class="lead">
+                A compact control scaffold. Every card is folded with the same code running in the Fold Lab,
+                so the comparison is apples to apples.
+              </p>
+            </div>
           </div>
 
           <div class="data-toolbar">
@@ -301,17 +306,17 @@
           <div class="card chart-card">
             <div class="card-head">
               <div>
-                <p class="eyebrow">Comparison</p>
-                <h3>Seed accessibility by guide group</h3>
+                <p class="kicker">Comparison</p>
+                <h3>Seed accessibility by guide</h3>
               </div>
             </div>
             <div class="chart-wrap">
               <canvas id="guideChart" aria-label="Chart of seed accessibility and self-pairing by guide"></canvas>
             </div>
-            <p class="viewer-note">
-              The project hypothesis: guides with an accessible seed should out-perform guides whose seed
-              is locked up in self-structure. With placeholder known-guide rows, this is a scaffold — the
-              comparison only becomes evidence once real spacers and activity labels are filled in.
+            <p class="note">
+              The project hypothesis: guides with an accessible seed should out-perform guides whose seed is
+              locked up in self-structure. With placeholder known-guide rows this is a scaffold — it only
+              becomes evidence once real spacers and activity labels are filled in.
             </p>
           </div>
 
@@ -319,12 +324,19 @@
         </div>
       </section>
 
-      <!-- ================================================== METHOD -->
-      <section class="panel" id="method" data-tab-panel="method" role="tabpanel" aria-labelledby="tab-method" hidden>
-        <div class="wrap">
-          <div class="section-head">
-            <p class="eyebrow">Topic review</p>
-            <h2>How the two models work</h2>
+      <!-- ================================================== 03 METHOD -->
+      <section class="chapter" id="method">
+        <div class="shell">
+          <div class="chapter-head">
+            <span class="ghost-num" aria-hidden="true">03</span>
+            <div class="chapter-intro">
+              <p class="eyebrow"><span class="eyebrow-dash" aria-hidden="true"></span>How it works</p>
+              <h2>Two ways to fold<br />the same molecule</h2>
+              <p class="lead">
+                Both are dynamic programming: solve every short subsequence, store it, combine. They differ
+                only in what they consider a good answer.
+              </p>
+            </div>
           </div>
 
           <div class="three-col">
@@ -332,23 +344,21 @@
               <h3>Biology</h3>
               <p>
                 RNA is single-stranded, so it folds back and pairs with itself. Stems, loops, and bulges
-                decide how the molecule behaves — including whether a CRISPR guide can reach its DNA
-                target.
+                decide how the molecule behaves — including whether a CRISPR guide can reach its DNA target.
               </p>
             </article>
             <article class="card soft">
               <h3>Computation</h3>
               <p>
-                Both algorithms are dynamic programming. They solve every short subsequence first, store
-                the answers, and combine them into the answer for the whole molecule. Nothing is
-                recomputed.
+                Both algorithms solve every short subsequence first, store the answers, and combine them into
+                the answer for the whole molecule. Nothing is recomputed.
               </p>
             </article>
             <article class="card soft">
               <h3>CRISPR</h3>
               <p>
-                For SpCas9 the spacer is 20 nt, and the PAM-proximal seed drives target recognition. If
-                that seed is paired inside the guide's own fold, it may be less available to bind DNA.
+                For SpCas9 the spacer is 20 nt, and the PAM-proximal seed drives target recognition. If that
+                seed is paired inside the guide's own fold, it may be less available to bind DNA.
               </p>
             </article>
           </div>
@@ -357,7 +367,7 @@
             <article class="card model-card">
               <div class="model-head">
                 <span class="model-badge badge-a">Model 1</span>
-                <h3>Nussinov (1978)</h3>
+                <h3>Nussinov, 1978</h3>
               </div>
               <p class="model-goal">Goal: <strong>maximize the number of base pairs</strong></p>
               <div class="recurrence">
@@ -378,7 +388,7 @@
             <article class="card model-card">
               <div class="model-head">
                 <span class="model-badge badge-b">Model 2</span>
-                <h3>Zuker (1981)</h3>
+                <h3>Zuker, 1981</h3>
               </div>
               <p class="model-goal">Goal: <strong>minimize free energy (kcal/mol)</strong></p>
               <div class="recurrence">
@@ -400,21 +410,21 @@
           <div class="card energy-card">
             <div class="card-head">
               <div>
-                <p class="eyebrow">Energy model</p>
+                <p class="kicker">Energy model</p>
                 <h3>Watson-Crick nearest-neighbour stacking</h3>
               </div>
             </div>
             <p class="card-lead">
               Zuker's stabilizing term. Each value is the free energy of stacking one pair directly on
-              another, in kcal/mol at 37&nbsp;°C. G·C-rich stacks are the most stabilizing — this is why
-              GC content predicts guide behaviour at all.
+              another, in kcal/mol at 37&nbsp;°C. G·C-rich stacks are the most stabilizing — which is why GC
+              content predicts guide behaviour at all.
             </p>
             <div class="stack-table" id="stackTable"></div>
-            <p class="viewer-note">
-              These ten values are the published Turner/Xia nearest-neighbour parameters. G·U wobble
-              stacks, loop initiation, and the multiloop term in this demo are documented simplifications
-              of the Turner rules — good enough to rank structures, not to quote absolute energies.
-              ViennaRNA remains the reference.
+            <p class="note">
+              These ten values are the published Turner/Xia nearest-neighbour parameters. G·U wobble stacks,
+              loop initiation, and the multiloop term in this demo are documented simplifications of the
+              Turner rules — good enough to rank structures, not to quote absolute energies. ViennaRNA
+              remains the reference.
             </p>
           </div>
 
@@ -429,10 +439,10 @@
                     returns −1.12 kcal/mol, matching the value derived by hand from the stacking table.
                   </li>
                   <li>
-                    <strong>The tRNA-Phe test:</strong> Zuker recovers the accepted cloverleaf — stems of
-                    7, 4, 5 and 5 bp, about 86% positional agreement with the published structure. Nussinov
-                    over-pairs the same molecule (29 pairs vs 23) and never forms the four-way junction.
-                    Load the tRNA-Phe example in Compare mode to see it.
+                    <strong>The tRNA-Phe test:</strong> Zuker recovers the accepted cloverleaf — stems of 7,
+                    4, 5 and 5 bp, about 86% positional agreement with the published structure. Nussinov
+                    over-pairs the same molecule (29 pairs vs 23) and never forms the four-way junction. Load
+                    the tRNA-Phe example in Compare mode to see it.
                   </li>
                   <li>Folding features (self-pairing, seed accessibility, GC) are computed identically for every sequence.</li>
                 </ul>
@@ -450,31 +460,38 @@
         </div>
       </section>
 
-      <!-- ================================================== ABOUT -->
-      <section class="panel band" id="about" data-tab-panel="about" role="tabpanel" aria-labelledby="tab-about" hidden>
-        <div class="wrap">
-          <div class="section-head">
-            <p class="eyebrow">Project</p>
-            <h2>About this work</h2>
+      <!-- ================================================== 04 ABOUT -->
+      <section class="chapter" id="about">
+        <div class="shell">
+          <div class="chapter-head">
+            <span class="ghost-num" aria-hidden="true">04</span>
+            <div class="chapter-intro">
+              <p class="eyebrow"><span class="eyebrow-dash" aria-hidden="true"></span>The team</p>
+              <h2>How this was built<br />and what comes next</h2>
+              <p class="lead">
+                Written from scratch, no folding libraries — the point was to understand the recurrences, not
+                to call someone else's.
+              </p>
+            </div>
           </div>
 
           <div class="timeline">
-            <article class="card soft">
+            <article class="card soft step">
               <span class="step-num">01</span>
               <h3>Research</h3>
               <p>Nussinov as a base-pair-count model, Zuker/ViennaRNA as energy-based folding, and CRISPR guide design as the application.</p>
             </article>
-            <article class="card soft">
+            <article class="card soft step">
               <span class="step-num">02</span>
               <h3>Build</h3>
-              <p>Written from scratch, no folding libraries: Nussinov in Python (<code>nussinov.py</code>), and both Nussinov and Zuker in the JavaScript running this page.</p>
+              <p>Nussinov in Python (<code>nussinov.py</code>), and both Nussinov and Zuker in the JavaScript running this page.</p>
             </article>
-            <article class="card soft">
+            <article class="card soft step">
               <span class="step-num">03</span>
               <h3>Apply</h3>
               <p>Fold guide spacers, extract seed accessibility and self-pairing, and compare known guides against random and bad controls.</p>
             </article>
-            <article class="card soft">
+            <article class="card soft step">
               <span class="step-num">04</span>
               <h3>Communicate</h3>
               <p>Make the algorithm visible: sequence in, DP matrix and 3D structure out, with the model's limits stated plainly.</p>
@@ -494,23 +511,10 @@
             <div class="card soft">
               <h3>Next step</h3>
               <p>
-                Replace the two known-guide placeholders with exact 20-nt spacers carrying measured
-                activity from Doench 2016 (Rule Set 2), then test whether seed accessibility separates
-                high- from low-activity guides. Until then the comparison set is a scaffold, not a result.
+                Replace the two known-guide placeholders with exact 20-nt spacers carrying measured activity
+                from Doench 2016 (Rule Set 2), then test whether seed accessibility separates high- from
+                low-activity guides. Until then the comparison set is a scaffold, not a result.
               </p>
-            </div>
-          </div>
-
-          <div class="ref-block">
-            <h3>References</h3>
-            <div class="ref-row">
-              <a href="https://www.pnas.org/doi/10.1073/pnas.77.11.6309" rel="noopener">Nussinov &amp; Jacobson 1980</a>
-              <a href="https://academic.oup.com/nar/article-lookup/doi/10.1093/nar/9.1.133" rel="noopener">Zuker &amp; Stiegler 1981</a>
-              <a href="https://pubs.acs.org/doi/10.1021/bi9809425" rel="noopener">Xia et al. 1998 (NN parameters)</a>
-              <a href="https://www.tbi.univie.ac.at/RNA/" rel="noopener">ViennaRNA</a>
-              <a href="https://www.nature.com/articles/nbt.3437" rel="noopener">Doench et al. 2016</a>
-              <a href="https://genomebiology.biomedcentral.com/articles/10.1186/s13059-015-0784-0" rel="noopener">WU-CRISPR 2015</a>
-              <a href="https://www.nature.com/articles/nmeth.3543" rel="noopener">CRISPRscan 2015</a>
             </div>
           </div>
         </div>
@@ -518,14 +522,32 @@
     </main>
 
     <footer>
-      <div class="wrap footer-inner">
-        <div>
-          <p class="footer-brand">RNA Fold Lab</p>
-          <p class="footer-note">Thomas Yu · Linus Tan · Henry Zhang · Brady Lambert</p>
+      <div class="shell footer-inner">
+        <div class="footer-brand-col">
+          <p class="footer-brand">RNA<em>Fold</em></p>
+          <p class="footer-note">Static site · algorithms run client-side · no data leaves your browser</p>
         </div>
-        <p class="footer-note">
-          Static site · algorithms run client-side · no data leaves your browser
-        </p>
+        <div class="footer-col">
+          <p class="footer-head">References</p>
+          <a href="https://www.pnas.org/doi/10.1073/pnas.77.11.6309" rel="noopener">Nussinov &amp; Jacobson 1980</a>
+          <a href="https://academic.oup.com/nar/article-lookup/doi/10.1093/nar/9.1.133" rel="noopener">Zuker &amp; Stiegler 1981</a>
+          <a href="https://pubs.acs.org/doi/10.1021/bi9809425" rel="noopener">Xia et al. 1998</a>
+          <a href="https://www.tbi.univie.ac.at/RNA/" rel="noopener">ViennaRNA</a>
+        </div>
+        <div class="footer-col">
+          <p class="footer-head">Data</p>
+          <a href="https://www.nature.com/articles/nbt.3437" rel="noopener">Doench et al. 2016</a>
+          <a href="https://genomebiology.biomedcentral.com/articles/10.1186/s13059-015-0784-0" rel="noopener">WU-CRISPR 2015</a>
+          <a href="https://www.nature.com/articles/nmeth.3543" rel="noopener">CRISPRscan 2015</a>
+          <a href="https://github.com/kwland/nussinov-zuker-crispr" rel="noopener">Source on GitHub</a>
+        </div>
+        <div class="footer-col">
+          <p class="footer-head">Team</p>
+          <span>Thomas Yu</span>
+          <span>Linus Tan</span>
+          <span>Henry Zhang</span>
+          <span>Brady Lambert</span>
+        </div>
       </div>
     </footer>
 
