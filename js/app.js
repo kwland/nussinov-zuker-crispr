@@ -362,7 +362,7 @@
     var text = parts.join(" · ") + ".";
     if (state.model === "both" && z.pairs.length < n.pairs.length) {
       text +=
-        " Zuker makes fewer pairs here. It will not pay the loop cost for a pair that does not stack onto anything, and Nussinov counts it anyway.";
+        " Zuker makes fewer pairs here. It won't pay the loop cost for a pair that doesn't stack onto anything. Nussinov just counts it anyway.";
     }
     el.textContent = text;
   }
@@ -397,7 +397,7 @@
       note =
         "Nussinov claims " +
         cmp.onlyA +
-        " pair(s) Zuker throws out. Those are usually lone pairs: worth +1 if you are counting, but they cost more in loop energy than the single stack gives back.";
+        " pair(s) Zuker throws out. Those are usually lone pairs. They're worth +1 if you're just counting, but they cost more in loop energy than the single stack gives back.";
     } else if (cmp.onlyB > 0) {
       note =
         "Zuker makes " +

@@ -128,14 +128,14 @@ window.Chapters = (function () {
 
     var open = Math.round(info.seedOpenness * 100);
     var verdict;
-    if (open >= 75) verdict = "The seed is wide open, so it should be free to reach the DNA.";
-    else if (open >= 50) verdict = "The seed is mostly open. That is usually good enough.";
-    else if (open >= 25) verdict = "Most of the seed is tied up in the fold, which tends to hurt.";
-    else verdict = "The seed is almost completely folded up. This guide is likely to work poorly.";
+    if (open >= 75) verdict = "The seed is wide open, so it should have no trouble reaching the DNA.";
+    else if (open >= 50) verdict = "The seed is mostly open, which is usually good enough.";
+    else if (open >= 25) verdict = "Most of the seed is tied up in the fold, and that tends to hurt.";
+    else verdict = "The seed is almost entirely folded up. This one probably works poorly.";
 
     var scaffoldNote = $("#withScaffold").checked
-      ? " Folded together with the scaffold tail, which is the molecule that really exists."
-      : " Folded as a bare spacer. The real guide carries a 76 letter tail that can pair with it, so this reading is optimistic.";
+      ? " I folded it with the scaffold tail attached, which is the molecule that actually exists."
+      : " I folded the bare spacer here. The real guide drags a 76 letter tail that can pair with it, so this reading runs a bit optimistic.";
 
     $("#analyzerInterpretation").textContent = open + "% of the seed is free. " + verdict + scaffoldNote;
   }
@@ -157,26 +157,26 @@ window.Chapters = (function () {
     $("#modelStats").innerHTML = [
       stat("Test accuracy", "ρ " + meta.testSpearman.toFixed(3), "on " + meta.testN.toLocaleString() + " held out guides"),
       stat("G/C alone", "ρ " + meta.baselineGcSpearman.toFixed(3), "the baseline to beat"),
-      stat("Without openness", "ρ " + meta.testSpearmanNoOpenness.toFixed(3), "our folding feature adds a little"),
+      stat("Without openness", "ρ " + meta.testSpearmanNoOpenness.toFixed(3), "the fold feature adds a little"),
       stat("Weights", meta.params.toLocaleString(), meta.hidden + " hidden units")
     ].join("");
 
     $("#modelNote").textContent =
-      "A small neural net (" +
+      "Quick honesty note: this network isn't mine. Thomas trained it for the project, and I'm reusing it here. It's small (" +
       meta.hidden +
       " hidden units, " +
       meta.params.toLocaleString() +
-      " weights) trained on " +
+      " weights), trained on " +
       meta.trainedOn +
-      ". It reads the letter at each position, each neighbouring pair, G/C content, and the seed openness from our own folder. On " +
+      ". It reads the letter at each position, each neighbouring pair, G/C content, and a seed openness score from a folder like mine. On " +
       meta.testN.toLocaleString() +
-      " held out guides it reaches Spearman ρ ≈ " +
+      " held out guides it hits Spearman ρ ≈ " +
       meta.testSpearman.toFixed(3) +
-      ", which is modest but real: it beats G/C alone (ρ ≈ " +
+      ". That's modest, but it's real. It beats G/C alone (ρ ≈ " +
       meta.baselineGcSpearman.toFixed(3) +
-      "), and adding our folding feature nudges it up from ρ ≈ " +
+      "), and the folding feature nudges it up from ρ ≈ " +
       meta.testSpearmanNoOpenness.toFixed(3) +
-      ". Guessing efficiency from 20 letters is genuinely hard, so treat this as a hint, not an answer. It runs in your browser. The network was trained by Thomas Yu for this project.";
+      ". Guessing efficiency from 20 letters is genuinely hard, so read this as a hint, not an answer. And yes, it runs right in your browser.";
   }
 
   function initAnalyzer() {
@@ -459,22 +459,22 @@ window.Chapters = (function () {
     ].join("");
 
     $("#datasetFinding").textContent =
-      "Each bar is the average measured efficiency of every guide at that level of seed openness. If our idea were right, the bars would climb to the right. They do not. Across " +
+      "Each bar averages the measured efficiency of every guide at that level of seed openness. If my idea held, the bars would climb as you move right. They don't. Across " +
       guides.length.toLocaleString() +
-      " guides the relationship is flat (Spearman ρ ≈ " +
+      " guides the line is basically flat (Spearman ρ ≈ " +
       rhoOpen.toFixed(2) +
-      "), so seed openness on its own does not predict how well a guide edits. G/C content does a little better (ρ ≈ " +
+      "), so seed openness on its own tells you almost nothing about how well a guide edits. G/C content does a touch better (ρ ≈ " +
       rhoGc.toFixed(2) +
-      ") but is still weak. This is a negative result, and it is worth more than a hopeful one: a weak signal on a small sample did not survive a bigger, more varied dataset. What efficiency mostly depends on is the sequence itself, which is what the neural net in chapter 02 picks up on.";
+      "), but it's still weak. I'll be honest, I wanted this to work. A negative result is worth more than a hopeful one though. A faint signal on a small sample just didn't survive a bigger, messier dataset. Efficiency mostly comes down to the sequence itself, which is the thing the network in chapter 02 leans on.";
 
     $("#datasetSource").textContent =
       "Real data. " +
       guides.length.toLocaleString() +
-      " guides with lab measured editing efficiency, pooled from two published screens (Doench 2014 and 2016, via CRISPOR / Haeussler 2016), with activity as a within dataset percentile. One caveat worth stating plainly: the seed openness column was precomputed by Thomas Yu's folder, not by the code running on this page, because folding all " +
+      " guides with lab measured editing efficiency, pooled from two published screens (Doench 2014 and 2016, via CRISPOR / Haeussler 2016), with activity as a within dataset percentile. One thing I'll flag plainly: the seed openness column here was precomputed by Thomas's folder, not the code on this page, since folding all " +
       guides.length.toLocaleString() +
-      " guides live would take about a minute. Our folder agrees with his closely but not perfectly, so these numbers are his. Showing the first " +
+      " guides live would take about a minute. Mine agrees with his closely but not perfectly, so these particular numbers are his. Showing the first " +
       TABLE_LIMIT +
-      " rows. Dataset assembled by Thomas Yu for this project.";
+      " rows. Thomas assembled the dataset for the project.";
 
     $("#datasetBody").innerHTML = guides
       .slice(0, TABLE_LIMIT)
@@ -660,8 +660,8 @@ window.Chapters = (function () {
 
         $("#checkStats").innerHTML = [
           summaryStat("Answer key shapes", scored.length, "solved in a lab"),
-          summaryStat("Our Zuker", avg("zukerF1").toFixed(2), "average accuracy (F1)"),
-          summaryStat("Our Nussinov", avg("nussinovF1").toFixed(2), "average accuracy (F1)"),
+          summaryStat("My Zuker", avg("zukerF1").toFixed(2), "average accuracy (F1)"),
+          summaryStat("My Nussinov", avg("nussinovF1").toFixed(2), "average accuracy (F1)"),
           summaryStat("ViennaRNA", avg("viennaF1").toFixed(2), "the standard tool")
         ].join("");
 
@@ -692,8 +692,8 @@ window.Chapters = (function () {
               '</p><div class="check-scroll"><div class="check-row"><div class="check-row-head"><span class="dot-tag">Known shape</span></div><code>' +
               UI.escapeHtml(s.ref.structure) +
               "</code></div>" +
-              row("Our Zuker", s.zukerStruct, s.zukerF1, "tag-b") +
-              row("Our Nussinov", s.nussinovStruct, s.nussinovF1, "tag-a") +
+              row("My Zuker", s.zukerStruct, s.zukerF1, "tag-b") +
+              row("My Nussinov", s.nussinovStruct, s.nussinovF1, "tag-a") +
               row("ViennaRNA", s.viennaStruct, s.viennaF1, "") +
               "</div></article>"
             );
@@ -722,11 +722,11 @@ window.Chapters = (function () {
         drawViennaScatter(points, r);
 
         $("#viennaNote").textContent =
-          "Every dot is one real sgRNA, folded twice: once by ViennaRNA and once by our Zuker. The energies line up at r = " +
+          "Every dot is one real sgRNA, folded twice. ViennaRNA folds it, then my Zuker folds it. The energies line up at r = " +
           r.toFixed(2) +
-          ", and our structures recover " +
+          ", and my structures recover " +
           Math.round(meanF1 * 100) +
-          "% of ViennaRNA's pairs on average (F1). The dots sit above the diagonal because our energies come out consistently less negative: our loop and wobble tables are simplified, so we under count how much a fold is worth. What matters is that the two move together. ViennaRNA uses the full set of lab measured energies and we do not, so agreeing this closely is a good sign our folder is doing the right thing. ViennaRNA cannot run in a browser, so its numbers here were computed ahead of time by Thomas Yu.";
+          "% of ViennaRNA's pairs on average (F1). The dots sit above the diagonal because my energies come out a little less negative every time. My loop and wobble tables are simplified, so I under count what a fold is really worth. The thing that matters is that the two move together. ViennaRNA uses the full set of lab measured energies and I don't, so landing this close is a good sign my folder is doing the right thing. ViennaRNA can't run in a browser, so Thomas computed its numbers ahead of time.";
 
         if ("ResizeObserver" in window) {
           new ResizeObserver(function () {
