@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rna-folding-crispr"
+version = "0.1.0"
+description = "An explainable Nussinov RNA-folding baseline for CRISPR guide exploration"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Linus Tan" }]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+[project.scripts]
+rna-fold = "nussinov:main"
+crispr-guide-features = "crispr_nussinov_analysis:main"
+
+[tool.setuptools]
+py-modules = ["nussinov", "crispr_nussinov_analysis"]

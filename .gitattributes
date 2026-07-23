@@ -1,0 +1,7 @@
+# Normalize line endings across machines.
+* text=auto eol=lf
+
+# Treat these as binary (never touch line endings).
+*.docx binary
+*.qzv binary
+*.svg text
